@@ -1,7 +1,7 @@
 """ 
 @author: Tal Peretz
 @date: 10/14/2016
-@TL;DR: this module gets relational data in several forms and returns a pandas dataframe
+@TL;DR: this module gets relational data in several forms and returns a pandas pandas DataFrame
 """
 
 import pandas as pd
@@ -33,9 +33,9 @@ def get_file_extension(file_path):
 def read(*args):
     """
     given a collection of file paths representing relational data
-    returns a pandas dataframe of the data
+    returns a pandas pandas DataFrame of the data
     :param args: collection of file paths representing an input file
-    :return: pandas dataframe
+    :return: pandas pandas DataFrame
     """
     partial_dfs = []
     for index, file_path in enumerate(args):
