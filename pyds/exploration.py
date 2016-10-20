@@ -9,6 +9,11 @@ from matplotlib import pyplot as plt
 
 
 def run_once(f):
+    """
+    internal decorator for running infer_columns_statistical_types only once, yet using results multiple times
+    :param f: function to decorate
+    :return: f which can only run once
+    """
     def wrapper(*args, **kwargs):
         if not wrapper.has_run:
             wrapper.has_run = True
@@ -22,6 +27,11 @@ def run_once(f):
 
 @run_once
 def infer_columns_statistical_types(df):
+    """
+    given a pandas DataFrame returns a lists of the dataframe's numerical columns, categorical columns, id columns
+    :param df: pandas DataFrame
+    :return: lists of the dataframe's numerical columns, categorical columns, id columns
+    """
     dist_ratios = df.apply(pd.Series.nunique) / df.apply(pd.Series.count)
     id_cols = dist_ratios.where(dist_ratios == 1).dropna().index.tolist()
     numerics = ['int16', 'int32', 'int64', 'float16', 'float32', 'float64']

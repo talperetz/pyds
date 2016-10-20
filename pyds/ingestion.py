@@ -1,7 +1,7 @@
 """ 
 @author: Tal Peretz
 @date: 10/14/2016
-@TL;DR: this module gets relational data in several forms and returns a pandas pandas DataFrame
+@TL;DR: this module gets relational data in several forms and returns a pandas DataFrame
 """
 
 import pandas as pd
