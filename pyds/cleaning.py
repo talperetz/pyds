@@ -88,7 +88,6 @@ def remove_outliers(df, contamination=0.1):
     Y = clf.predict(X)
     outliers = []
     for i, is_outlier in enumerate(Y):
-        print(is_outlier)
         if is_outlier == -1:
             outliers.append(i)
     return X.drop(X.index[outliers])
