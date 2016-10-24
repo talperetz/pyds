@@ -8,24 +8,24 @@ import pandas as pd
 from matplotlib import pyplot as plt
 
 
-def run_once(f):
-    """
-    internal decorator for running infer_columns_statistical_types only once, yet using results multiple times
-    :param f: function to decorate
-    :return: f which can only run once
-    """
-    def wrapper(*args, **kwargs):
-        if not wrapper.has_run:
-            wrapper.has_run = True
-            return f(*args, **kwargs)
-        else:
-            return numerical_cols, categorical_cols, id_cols
+# def _run_once(f):
+#     """
+#     internal decorator for running infer_columns_statistical_types only once, yet using results multiple times
+#     :param f: function to decorate
+#     :return: f which can only run once
+#     """
+#     def wrapper(*args, **kwargs):
+#         if not wrapper.has_run:
+#             wrapper.has_run = True
+#             return f(*args, **kwargs)
+#         else:
+#             return numerical_cols, categorical_cols, id_cols
+#
+#     wrapper.has_run = False
+#     return wrapper
 
-    wrapper.has_run = False
-    return wrapper
 
-
-@run_once
+# @_run_once
 def infer_columns_statistical_types(df):
     """
     given a pandas DataFrame returns a lists of the dataframe's numerical columns, categorical columns, id columns
@@ -35,8 +35,8 @@ def infer_columns_statistical_types(df):
     dist_ratios = df.apply(pd.Series.nunique) / df.apply(pd.Series.count)
     id_cols = dist_ratios.where(dist_ratios == 1).dropna().index.tolist()
     numerics = ['int16', 'int32', 'int64', 'float16', 'float32', 'float64']
-    numerical_cols = df.select_dtypes(include=numerics).columns.drop(id_cols)
-    categorical_cols = df.columns.difference(numerical_cols).drop(id_cols)
+    numerical_cols = df.select_dtypes(include=numerics).columns.drop(id_cols).tolist()
+    categorical_cols = df.columns.difference(numerical_cols).drop(id_cols).tolist()
     return numerical_cols, categorical_cols, id_cols
 
 
@@ -47,8 +47,15 @@ def describe(df, **kwargs):
     :param df: pandas pandas DataFrame
     :return: pandas pandas DataFrame describing basic statistics about numeric columns
     """
-    numeric_cols, categorical_cols, _ = infer_columns_statistical_types
-    return df[numeric_cols].describe(**kwargs), df[categorical_cols].describe(**kwargs)
+    numerical_columns, categorical_columns, _ = infer_columns_statistical_types(df)
+    num_description = None
+    cat_description = None
+    if len(numerical_columns) > 0:
+        num_description = df[numerical_columns].describe(**kwargs)
+        print(num_description)
+    if len(categorical_columns) > 0:
+        cat_description = df[categorical_columns].describe(**kwargs)
+    return num_description, cat_description
 
 
 def hist(df, **kwargs):
@@ -86,13 +93,13 @@ def box_plot(df, **kwargs):
     numerical_columns, categorical_columns, _ = infer_columns_statistical_types(df)
     numerical_figures, categorical_figures = [], []
 
-    # numerical columns histogram plotting
+    # numerical columns box_plot plotting
     for i, col in enumerate(numerical_columns):
         numerical_figures.append(plt.figure(i))
         plt.suptitle(col)
-        df[col].boxplot(**kwargs)
+        df[col].plot(kind='box', **kwargs)
 
-    # categorical columns histogram plotting
+    # categorical columns box_plot plotting
     for i, col in enumerate(categorical_columns):
         categorical_figures.append(plt.figure(i))
         plt.suptitle(col)
@@ -135,7 +142,6 @@ def correlations(df, size=8):
     plt.yticks(range(len(corr.columns)), corr.columns)
     return corr, fig
 
-
-numerical_cols = []
-categorical_cols = []
-id_cols = []
+# numerical_cols = []
+# categorical_cols = []
+# id_cols = []

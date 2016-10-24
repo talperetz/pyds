@@ -12,7 +12,7 @@ file_extension_to_read_attribute = {'csv': 'read_csv', 'excel': 'read_excel', 'h
                                     'pickle': 'read_pickle'}
 
 
-def get_file_extension(file_path):
+def _get_file_extension(file_path):
     """
     given the path of a file
     returns it's extension as string
@@ -39,6 +39,6 @@ def read(*args):
     """
     partial_dfs = []
     for index, file_path in enumerate(args):
-        pd_read_function = getattr(pd, file_extension_to_read_attribute[get_file_extension(file_path)])
+        pd_read_function = getattr(pd, file_extension_to_read_attribute[_get_file_extension(file_path)])
         partial_dfs.append(pd_read_function(file_path))
     return pd.concat(partial_dfs)
