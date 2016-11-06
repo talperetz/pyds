@@ -5,13 +5,12 @@
 :Links: https://www.analyticsvidhya.com/blog/2015/01/scikit-learn-python-machine-learning-tool/
 """
 
-# classification models
 from sklearn import metrics
 from sklearn.cluster import KMeans, SpectralClustering, MiniBatchKMeans, DBSCAN, AffinityPropagation
 from sklearn.decomposition import PCA, KernelPCA
 from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis
 from sklearn.ensemble import GradientBoostingRegressor
-from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier
+from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier, IsolationForest
 from sklearn.ensemble.forest import RandomForestRegressor
 from sklearn.gaussian_process import GaussianProcessClassifier
 from sklearn.gaussian_process.kernels import RBF
@@ -24,6 +23,9 @@ from sklearn.neural_network import MLPClassifier
 from sklearn.svm import SVC
 from sklearn.svm import SVR
 from sklearn.tree import DecisionTreeClassifier
+from orangecontrib.associate.fpgrowth import association_rules, frequent_itemsets, rules_stats
+from pyds import constants
+import pandas as pd
 
 
 def classify(X_train, X_test, y_train, y_test):
@@ -179,9 +181,55 @@ def reduce_dimensions(df, reduce_cols, n_components):
     return reducer_to_results
 
 
-def associate_rules():
-    pass
+# http://aimotion.blogspot.co.il/2013/01/machine-learning-and-data-mining.html
+# https://github.com/biolab/orange3-associate
+"""
+Association analysis is the task of finding interesting relationships in large data sets.
+There hidden relationships are then expressed as a collection of association rules and frequent item sets.
+Frequent item sets are simply a collection of items that frequently occur together.
+And association rules suggest a strong relationship that exists between two items.
+"""
 
 
-def detect_anomalies():
-    pass
+def associate_rules(df, min_support, min_confidence):
+    """
+    given a pandas DataFrame, minimum support level and minimum confidence level
+    returns dataframe with rules and statistics
+    :param df: pandas DataFrame
+    :param min_support: (float or int) – If float in range (0, 1), percent of minimal support for itemset to be considered
+    frequent. If int > 1, the absolute number of instances. For example, general iterators don’t have defined length,
+    so you need to pass the absolute minimal support as int.
+    :param min_confidence: (float) – Confidence percent. Defined as itemset_support / antecedent_support.
+    :return: pandas DataFrame with columns 'antecedent', 'consequent', 'support', 'confidence', 'coverage', 'strength',
+    'lift', 'leverage'
+    """
+    matrix = df.to_matrix()
+    itemsets = frequent_itemsets(matrix, min_support)
+    rules = list(association_rules(itemsets, min_confidence))
+    rstats = list(rules_stats(rules, itemsets, df.shape[0]))
+    rules_df = pd.DataFrame(data=rstats, columns=['antecedent', 'consequent', 'support', 'confidence', 'coverage',
+                                                  'strength', 'lift', 'leverage'])
+    return rules_df
+
+
+def detect_anomalies(X, y=None, contamination=0.1):
+    """
+    given a pandas DataFrame returns dataframe with contamination*num of instances
+    rows dropped using isolation forest to detect outliers
+    :param y: [pandas series] target column
+    :param X: [pandas DataFrame] raw features
+    :param contamination:  the proportion of outliers in the data set
+    :return: outliers indexes
+    """
+    df = X.copy()
+    if y is not None:
+        df[y.name] = y
+    clf = IsolationForest(max_samples=len(df.index), n_estimators=constants.ISOLATION_FOREST_N_ESTIMATORS,
+                          contamination=contamination)
+    clf.fit(df)
+    Y = clf.predict(df)
+    outliers = []
+    for i, is_outlier in enumerate(Y):
+        if is_outlier == -1:
+            outliers.append(i)
+    return df.index[outliers]

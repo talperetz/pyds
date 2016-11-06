@@ -7,7 +7,7 @@ and removing id_columns
 
 import numpy as np
 import pandas as pd
-from sklearn.ensemble import IsolationForest
+from pyds import ml
 from sklearn.neighbors import KNeighborsClassifier, KNeighborsRegressor
 from sklearn.preprocessing import Imputer, RobustScaler, LabelEncoder
 
@@ -100,7 +100,7 @@ def fill_missing_values(X, pipeline_results, method='knn',
     return filled_df, na_rows, filled_df.loc[na_rows.index, :]
 
 
-def remove_column_outliers(column, m=3):
+def _remove_column_outliers(column, m=3):
     """
     given a pandas Series representing a column in a dataframe
     returns pandas Series without the values which are further than m*std
@@ -108,27 +108,24 @@ def remove_column_outliers(column, m=3):
     :param m: num of std as of to remove outliers
     :return: pandas Series without the values which are further than m*std
     """
-    return column[abs(column - np.mean(column)) < m * np.std(column)]
+    outliers = column[abs(column - np.mean(column)) > m * np.std(column)].index
+    return outliers
 
 
-def detect_outliers(X, y=None, contamination=0.1):
+def detect_outliers(X, y=None, contamination=0.1, method='IsolationForest', m=3):
     """
     given a pandas DataFrame returns dataframe with contamination*num of instances
-    rows dropped using isolation forest to detect outliers
+    rows indexes indicating outliers using isolation forest or m*std per column to detect outliers
+    :param m: num of std as of to remove outliers
     :param y: [pandas series] target column
     :param X: [pandas DataFrame] raw features
     :param contamination:  the proportion of outliers in the data set
+    :param method:
     :return: outliers indexes
     """
-    df = X.copy()
-    if y is not None:
-        df[y.name] = y
-    clf = IsolationForest(max_samples=len(df.index), n_estimators=constants.ISOLATION_FOREST_N_ESTIMATORS,
-                          contamination=contamination)
-    clf.fit(df)
-    Y = clf.predict(df)
-    outliers = []
-    for i, is_outlier in enumerate(Y):
-        if is_outlier == -1:
-            outliers.append(i)
-    return df.index[outliers]
+    if method == 'IsolationForest':
+        outliers = ml.detect_anomalies(X, y=y, contamination=contamination)
+    else:
+        # find columns that are m*std further than the mean
+        outliers = X.apply(lambda col: _remove_column_outliers(col, m=m), axis=1).dropna().index.tolist()
+    return outliers
