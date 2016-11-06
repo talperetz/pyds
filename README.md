@@ -23,6 +23,11 @@ and can solve problems of the following types:
 ### API
 
 ### Tests
+Travis CI
+code climate
+
+### Authors
+Tal Peretz
 
 ### License
 
