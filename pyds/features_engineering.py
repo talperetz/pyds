@@ -1,7 +1,7 @@
 """ 
-@author: Tal Peretz
-@date: 10/14/2016
-@TL;DR: this module is responsible for the transformation and creation and selection of features
+:Authors: Tal Peretz
+:Date: 10/14/2016
+:TL;DR: this module is responsible for the transformation and creation and selection of features
 """
 
 import numpy as np

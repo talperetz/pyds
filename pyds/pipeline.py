@@ -1,7 +1,7 @@
 """ 
-@author: Tal Peretz
-@date: 10/14/2016
-@TL;DR: this module responsible for executing the data science pipelilne and holding it's results
+:Authors: Tal Peretz
+:Date: 10/14/2016
+:TL;DR: this module responsible for executing the data science pipelilne and holding it's results
 """
 from pyds import ingestion, exploration, cleaning, features_engineering, ml
 

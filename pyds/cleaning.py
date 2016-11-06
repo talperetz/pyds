@@ -1,7 +1,7 @@
 """ 
-@author: Tal Peretz
-@date: 10/14/2016
-@TL;DR: this module is responsible for improving data quality via filling missing values and removing outliers in data
+:Authors: Tal Peretz
+:Date: 10/14/2016
+:TL;DR: this module is responsible for improving data quality via filling missing values and removing outliers in data
 and removing id_columns
 """
 

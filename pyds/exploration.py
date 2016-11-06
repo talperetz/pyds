@@ -1,7 +1,7 @@
 """ 
-@author: Tal Peretz
-@date: 10/14/2016
-@TL;DR: this module is responsible for univariate and bi-variate analysis
+:Authors: Tal Peretz
+:Date: 10/14/2016
+:TL;DR: this module is responsible for univariate and bi-variate analysis
 """
 
 import pandas as pd

@@ -1,8 +1,8 @@
 """ 
-@author: Tal Peretz
-@date: 10/21/2016
-@TL;DR: this module
-@links: https://www.analyticsvidhya.com/blog/2015/01/scikit-learn-python-machine-learning-tool/
+:Authors: Tal Peretz
+:Date: 10/21/2016
+:TL;DR: this module
+:Links: https://www.analyticsvidhya.com/blog/2015/01/scikit-learn-python-machine-learning-tool/
 """
 
 # classification models

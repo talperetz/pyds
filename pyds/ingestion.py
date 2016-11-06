@@ -1,7 +1,7 @@
 """ 
-@author: Tal Peretz
-@date: 10/14/2016
-@TL;DR: this module converts relational data of several forms to a pandas DataFrame, infer and adjust columns types
+:Authors: Tal Peretz
+:Date: 10/14/2016
+:TL;DR: this module converts relational data of several forms to a pandas DataFrame, infer and adjust columns types
 and splits the data for train and test
 """
 
