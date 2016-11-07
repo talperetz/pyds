@@ -13,7 +13,7 @@ from pyds import constants
 def describe(X, pipeline_results, y=None, **kwargs):
     """
     given a pandas pandas DataFrame returns a pandas pandas DataFrame describing basic statistics about numeric columns,
-     dropping id-columns
+    dropping id-columns
     :param y: [pandas Series] target column
     :param pipeline_results: class: 'PipelineResults'
     :param X: [pandas DataFrame] predictor columns

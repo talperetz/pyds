@@ -162,7 +162,7 @@ def _rank_to_dict(ranks, names, order=1):
 def select_features(X, y):
     """
     given a pandas DataFrame and the column name of target variable returns dataframe after dropping irrelevant features
-     according to RandomizedLasso and RandomForestRegressor feature selection
+    according to RandomizedLasso and RandomForestRegressor feature selection
     :param y: [pandas Series] target column
     :param X: [pandas DataFrame] predictor columns
     :return: dataframe without meaningless features according to RandomizedLasso and RandomForestRegressor

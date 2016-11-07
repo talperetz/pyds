@@ -1,17 +1,16 @@
 """ 
 :Authors: Tal Peretz
 :Date: 10/14/2016
-:TL;DR: this module is responsible for improving data quality via filling missing values and removing outliers in data
-and removing id_columns
+:TL;DR: this module is responsible for improving data quality via filling missing values, removing outliers in data and removing id_columns
 """
 
 import numpy as np
 import pandas as pd
-from pyds import ml
 from sklearn.neighbors import KNeighborsClassifier, KNeighborsRegressor
 from sklearn.preprocessing import Imputer, RobustScaler, LabelEncoder
 
 from pyds import constants
+from pyds import ml
 
 
 def remove_id_columns(X_train, id_columns):

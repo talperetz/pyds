@@ -2,7 +2,7 @@
 :Authors: Tal Peretz
 :Date: 10/14/2016
 :TL;DR: this module converts relational data of several forms to a pandas DataFrame, infer and adjust columns types
-and splits the data for train and test
+    and splits the data for train and test
 """
 
 import pandas as pd
@@ -100,7 +100,7 @@ def adjust_columns_types(cols_to_convert_cat, X_train, X_test, y_train, y_test):
     :param y_train: [pandas Series] train target column
     :param y_test: [pandas Series] train target column
     :return: adjusted_X_train, adjusted_X_test, adjusted_y_train, adjusted_y_test which are the initial dataframes with
-     correct types
+    correct types
     """
     adjusted_X_train, adjusted_X_test, adjusted_y_train, adjusted_y_test = X_train, X_test, y_train, y_test
     if (cols_to_convert_cat is not None) and cols_to_convert_cat:
