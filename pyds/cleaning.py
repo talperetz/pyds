@@ -76,6 +76,24 @@ def _simple_imputation(df, method):
     return pd.DataFrame(data=imp.fit_transform(df), columns=df.columns, index=df.index)
 
 
+def _indicate_missing_values(df):
+    """
+    given a pandas DataFrame returns pandas Series indicating the presence of each row as tuple of booleans,
+    if all values are present in the row it indicates True (instead of tuple)
+    :param df: pandas DataFrame
+    :return: pandas Series indicating the presence of each row as tuple of booleans, if all values are present in a row
+     it indicates True (instead of tuple)
+    """
+    # init series with True: assume all attributes are present
+    presence_series = pd.Series(index=df.index)
+    presence_series[presence_series.index] = True
+    na_rows = df[df.isnull().any(axis=1)]
+    # indicate missing values as a tuple indicating presence for each cell 
+    for na_row_idx in na_rows.index:
+        presence_series[na_row_idx] = tuple(df.loc[na_row_idx, :].isnull())
+    return presence_series
+
+
 def fill_missing_values(X, pipeline_results, method='knn',
                         drop_above_null_percents=constants.DROP_ABOVE_NULL_THRESHOLD):
     """
@@ -93,10 +111,12 @@ def fill_missing_values(X, pipeline_results, method='knn',
     drop_idxs = null_counts[null_counts > (len(df.columns) * drop_above_null_percents)]
     df_to_fill = df.drop(drop_idxs)
     na_rows = df[df.isnull().any(axis=1)]
+    presence_series = _indicate_missing_values(df)
     if method == 'knn':
         filled_df = _knn_imputation(df_to_fill, pipeline_results)
     else:
         filled_df = _simple_imputation(df_to_fill, method)
+    filled_df['presence_series'] = presence_series
     return filled_df, na_rows, filled_df.loc[na_rows.index, :]
 
 
