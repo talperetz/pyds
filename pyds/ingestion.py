@@ -7,13 +7,7 @@
 
 import pandas as pd
 from sklearn.model_selection import train_test_split
-
 from pyds import constants
-
-# supported file extensions
-file_extension_to_read_attribute = {'csv': 'read_csv', 'excel': 'read_excel', 'hdf': 'read_hdf', 'sql': 'read_sql',
-                                    'json': 'read_json', 'html': 'read_html', 'stata': 'read_stata', 'sas': 'read_sas',
-                                    'pickle': 'read_pickle'}
 
 
 def _get_file_extension(file_path):
@@ -29,8 +23,8 @@ def _get_file_extension(file_path):
         file_extension = file_path.split(".")[-1]
         if file_extension == "":
             raise ValueError('expected .[extension] file')
-        elif file_extension not in file_extension_to_read_attribute.keys():
-            raise ValueError('supported file types are \n %s' % file_extension_to_read_attribute.keys())
+        elif file_extension not in constants.FILE_EXTENSION_TO_READ_ATTRIBUTE.keys():
+            raise ValueError('supported file types are \n %s' % constants.FILE_EXTENSION_TO_READ_ATTRIBUTE.keys())
     return file_extension
 
 
@@ -43,7 +37,7 @@ def read(*args):
     """
     partial_dfs = []
     for index, file_path in enumerate(args):
-        pd_read_function = getattr(pd, file_extension_to_read_attribute[_get_file_extension(file_path)])
+        pd_read_function = getattr(pd, constants.FILE_EXTENSION_TO_READ_ATTRIBUTE[_get_file_extension(file_path)])
         partial_dfs.append(pd_read_function(file_path))
     return pd.concat(partial_dfs)
 
@@ -80,8 +74,7 @@ def infer_columns_statistical_types(X, y=None):
     unique_df = df.apply(pd.Series.nunique)
     dist_ratios = unique_df / df.apply(pd.Series.count)
     id_cols = dist_ratios.where(dist_ratios == 1).dropna().index.tolist()
-    numerics = ['int16', 'int32', 'int64', 'float16', 'float32', 'float64']
-    suspected_numerical_cols = set(df.select_dtypes(include=numerics).columns.drop(id_cols).tolist())
+    suspected_numerical_cols = set(df.select_dtypes(include=constants.NUMERIC_TYPES).columns.drop(id_cols).tolist())
     numerical_cols = list(
         set(unique_df.where(unique_df > constants.CATEGORICAL_THRESHOLD).dropna().index.tolist()).intersection(
             suspected_numerical_cols))

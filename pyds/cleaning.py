@@ -70,7 +70,7 @@ def _simple_imputation(df, method):
     :param method: 'mean', 'median', 'most_frequent'
     :return: pandas DataFrame without missing values
     """
-    imp = Imputer(missing_values='NaN', strategy=method, axis=0)
+    imp = Imputer(missing_values=constants.MISSING_VALUES_REPRESENTATION, strategy=method, axis=0)
     return pd.DataFrame(data=imp.fit_transform(df), columns=df.columns, index=df.index)
 
 

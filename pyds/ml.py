@@ -55,7 +55,7 @@ def classify(X_train, X_test, y_train, y_test):
         GaussianNB(),
         QuadraticDiscriminantAnalysis()]
 
-    clf_to_score = {}
+    clf_to_score = dict()
     # iterate over classifiers
     for name, clf in zip(classifiers_names, classifiers):
         clf.fit(X_train, y_train)
@@ -75,9 +75,7 @@ def regress(X_train, X_test, y_train, y_test):
     :param y_test: test true labels (target var)
     :return: the best_regressor according to the metric, it's predictions on the test set and it's metric score
     """
-    regressors_names = set()
-    regressors = set()
-    regressor_to_score = {}
+    regressors_names, regressors, regressor_to_score = set(), set(), dict()
     if len(X_train.index) > 100000:
         sgd = SGDRegressor(alpha=0.0001, average=False, epsilon=0.1, eta0=0.01,
                            fit_intercept=True, l1_ratio=0.15, learning_rate='invscaling',
@@ -159,8 +157,7 @@ def create_clusters(df, cluster_cols, n_clusters=None, labels_true=None):
     :return: dictionary of clustering algorithm to it's name, labels and metrics
     """
     X = df[cluster_cols]
-    clustering_names = set()
-    clustering_algorithms = set()
+    clustering_names, clustering_algorithms, clusterer_to_results = set(), set(), dict()
     if n_clusters is not None:
         if len(df.index) > 10000:
             k_means = KMeans(n_clusters=n_clusters).fit(X)
@@ -179,7 +176,6 @@ def create_clusters(df, cluster_cols, n_clusters=None, labels_true=None):
         af = AffinityPropagation().fit(X)
         clustering_names.update(["DBSCAN", "AffinityPropagation"])
         clustering_algorithms.update([dbs, af])
-    clusterer_to_results = {}
     for name, clusterer in zip(clustering_names, clustering_algorithms):
         labels_pred = clusterer.labels_
         metrics_ = _analyze_clusters(X, labels_pred, name, labels_true)
