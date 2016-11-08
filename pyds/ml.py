@@ -183,7 +183,7 @@ def create_clusters(df, cluster_cols, n_clusters=None, labels_true=None):
     return clusterer_to_results
 
 
-def reduce_dimensions(df, reduce_cols, n_components):
+def reduce_dimensions(df, reduce_cols=None, n_components=None):
     """
     given a dataframe, columns to reduce and number of components for dimensionality reduction algorithm
     returns a dictionary of reduction algorithm to it's name and reduced df
@@ -192,14 +192,15 @@ def reduce_dimensions(df, reduce_cols, n_components):
     :param n_components: number of components for dimensionality reduction algorithm
     :return: dictionary of reduction algorithm to it's name and reduced df
     """
-    if n_components is None:
-        n_components = 2
-    reductions_names = set()
-    reductions_algorithms = set()
-    X = df
-    if (reduce_cols is not None) and (set(reduce_cols).issubset(set(df.columns.tolist()))) and (
+    if not reduce_cols and (set(reduce_cols).issubset(set(df.columns.tolist()))) and (
                 len(df[reduce_cols].index) > 0):
-        X = df[reduce_cols]
+        X = df[reduce_cols].copy()
+    else:
+        X = df.copy()
+    if not n_components:
+        n_components = 2
+    reductions_names, reductions_algorithms = set(), set()
+
     pca = PCA(n_components=n_components, svd_solver='randomized')
     reductions_names.add("PCA")
     reductions_algorithms.add(pca)
