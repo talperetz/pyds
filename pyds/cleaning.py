@@ -8,7 +8,6 @@ import numpy as np
 import pandas as pd
 from sklearn.neighbors import KNeighborsClassifier, KNeighborsRegressor
 from sklearn.preprocessing import Imputer, RobustScaler, LabelEncoder
-
 from pyds import constants
 from pyds import ml
 
@@ -75,6 +74,7 @@ def _simple_imputation(df, method):
     return pd.DataFrame(data=imp.fit_transform(df), columns=df.columns, index=df.index)
 
 
+# todo: if doesn't work -> replace tuple in a string
 def _indicate_missing_values(df):
     """
     given a pandas DataFrame returns pandas Series indicating the presence of each row as tuple of booleans,
@@ -82,6 +82,8 @@ def _indicate_missing_values(df):
     :param df: pandas DataFrame
     :return: pandas Series indicating the presence of each row as tuple of booleans, if all values are present in a row
      it indicates True (instead of tuple)
+     :links: Data preparation for data_mining [chapter 8] -
+     http://www.temida.si/~bojan/MPS/materials/Data_preparation_for_data_mining.pdf
     """
     # init series with True: assume all attributes are present
     presence_series = pd.Series(index=df.index)
