@@ -1,7 +1,7 @@
 """ 
 :Authors: Tal Peretz
 :Date: 10/21/2016
-:TL;DR: this module
+:TL;DR: this module is responsible for the data science classic model-based solutions implementation
 :Links: https://www.analyticsvidhya.com/blog/2015/01/scikit-learn-python-machine-learning-tool/
 """
 
@@ -26,6 +26,7 @@ from sklearn.tree import DecisionTreeClassifier
 from orangecontrib.associate.fpgrowth import association_rules, frequent_itemsets, rules_stats
 from pyds import constants
 import pandas as pd
+from collections import defaultdict, Counter
 
 
 def classify(X_train, X_test, y_train, y_test):
@@ -103,6 +104,39 @@ def regress(X_train, X_test, y_train, y_test):
     return best_regressor, best_regressor.predict(X_test), regressor_to_score[best_regressor]
 
 
+def _analyze_clusters(X, clustering_labels, algorithm_name, real_labels=None):
+    """
+    given pandas DataFrame and labels of each point returns dictionary of cluster_num to list of cluster items
+    :param X: pandas DataFrame
+    :param clustering_labels: numpy.ndarray with clustering labels of each point
+    :param real_labels: numpy.ndarray with real labels of each point
+    :return: dictionary {cluster_num: [cluster_item_1, ..., cluster_item_n]}
+    """
+    n_clusters_ = len(set(clustering_labels)) - (1 if -1 in clustering_labels else 0)
+    clustering_metrics = pd.Series(data=None, index=['items', 'size', 'real_label_to_frequency'], name=algorithm_name,
+                                   columns=['cluster %s' % i for i in n_clusters_])
+
+    # build dictionary of cluster_label to cluster_items
+    cluster_num_to_items_in_cluster = defaultdict(list)
+    cluster_num_to_real_labels_in_cluster = defaultdict(list)
+    for i, cluster_label in enumerate(clustering_labels):
+        cluster_num_to_items_in_cluster[cluster_label].append(X[i])
+        if real_labels:
+            cluster_num_to_real_labels_in_cluster[cluster_label].append(real_labels[i])
+
+    # fill clustering_metrics values
+    for cluster_label in cluster_num_to_items_in_cluster:
+        cluster_size = len(cluster_items)
+        cluster_items = cluster_num_to_items_in_cluster[cluster_label]
+        clustering_metrics.loc['items', 'cluster %s' % cluster_label] = cluster_items
+        clustering_metrics.loc['size', 'cluster %s' % cluster_label] = cluster_size
+        if real_labels:
+            clustering_metrics.loc['real_label_to_frequency', 'cluster %s' % cluster_label] = {
+                cluster_num: real_labels_count / float(cluster_size) for cluster_num, real_labels_count in
+                dict(Counter(cluster_num_to_real_labels_in_cluster[cluster_label])).iteritems()}
+    return clustering_metrics
+
+
 def create_clusters(df, cluster_cols, n_clusters=None):
     """
     given a dataframe, relevant columns for clustering and num of clusters [optional]
@@ -115,7 +149,6 @@ def create_clusters(df, cluster_cols, n_clusters=None):
     X = df[cluster_cols]
     clustering_names = set()
     clustering_algorithms = set()
-    metrics_ = set()
     if n_clusters is not None:
         if len(df.index) > 10000:
             k_means = KMeans(n_clusters=n_clusters).fit(X)
@@ -137,8 +170,7 @@ def create_clusters(df, cluster_cols, n_clusters=None):
     clusterer_to_results = {}
     for name, clusterer in zip(clustering_names, clustering_algorithms):
         labels = clusterer.labels_
-        n_clusters_ = len(set(labels)) - (1 if -1 in labels else 0)
-        metrics_.update([n_clusters_, metrics.silhouette_score(X, labels)])
+        metrics_ = _analyze_clusters(X, labels, name)
         clusterer_to_results[clusterer] = name, labels, metrics_
     return clusterer_to_results
 
