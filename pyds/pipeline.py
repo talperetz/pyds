@@ -5,6 +5,12 @@
 """
 from pyds import ingestion, exploration, cleaning, features_engineering, ml
 
+# Todo: python packaging:
+# http://www.aosabook.org/en/packaging.html
+
+# Todo: architecture
+# http://www.advogato.org/article/258.html
+
 
 class PipelineResults:
     """
@@ -26,7 +32,7 @@ class PipelineResults:
         transformations, created_features = (None for i in range(2))
 
     class ML:
-        best_model, predictions_df, scores, clusterer_to_results, reducer_to_results = (None for i in range(5))
+        best_model, predictions_df, scores, clusterer_to_results, scatter_plots = (None for i in range(5))
 
     def save_ingestion_results(self, X_train, X_test, y_train, y_test, numerical_cols, categorical_cols, id_cols):
         self.Ingestion.initial_X_train = X_train
@@ -57,12 +63,12 @@ class PipelineResults:
         self.Features.created_features = created_features
         self.Features.selected_features = selected_features
 
-    def save_models(self, best_model, predictions_df, scores, clusterer_to_results, reducer_to_results):
+    def save_models(self, best_model, predictions_df, scores, clusterer_to_results, scatter_plots):
         self.ML.best_model = best_model
         self.ML.predictions_df = predictions_df
         self.ML.scores = scores
         self.ML.clusterer_to_results = clusterer_to_results
-        self.ML.reducer_to_results = reducer_to_results
+        self.ML.scatter_plots = scatter_plots
 
 
 def exec_pipeline(train_paths, test_paths=None, target_column=None, columns_to_clusterize=None,
@@ -147,8 +153,8 @@ def exec_pipeline(train_paths, test_paths=None, target_column=None, columns_to_c
     # unsupervised problem
     else:
         clusterer_to_results = ml.create_clusters(ml_ready_X_train, columns_to_clusterize, n_clusters)
-    reducer_to_results = ml.reduce_dimensions(ml_ready_X_train, columns_to_reduce_d, n_components)
-    pipeline_results.save_models(best_model, predictions_df, scores, clusterer_to_results, reducer_to_results)
+    scatter_plots = exploration.scatter_plot(ml_ready_X_train, ml_ready_y_train)
+    pipeline_results.save_models(best_model, predictions_df, scores, clusterer_to_results, scatter_plots)
 
     return pipeline_results
 

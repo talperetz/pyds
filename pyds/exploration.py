@@ -93,7 +93,7 @@ def box_plot(X, pipeline_results, y=None, **kwargs):
     return numerical_figures, categorical_figures
 
 
-def scatter_plot(X_after_transformations, **kwargs):
+def scatter_plot(X_after_transformations, y_train, **kwargs):
     """
     given a pandas DataFrame without categorical data plots scatterplot of the data for each
     reducer in ml.reduce_dimensions()
@@ -105,7 +105,7 @@ def scatter_plot(X_after_transformations, **kwargs):
     for i, reducer_results in enumerate(reducer_to_results.values()):
         figures.append(plt.figure(i))
         plt.suptitle(reducer_results[0])
-        reducer_results[1].plot(kind='scatter', **kwargs)
+        plt.scatter(reducer_results[1][:, 0], reducer_results[1][:, 1], c=y_train)
     return figures
 
 
