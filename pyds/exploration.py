@@ -6,7 +6,7 @@
 
 import pandas as pd
 from matplotlib import pyplot as plt
-
+from pyds import ml
 from pyds import constants
 
 
@@ -91,6 +91,22 @@ def box_plot(X, pipeline_results, y=None, **kwargs):
         df[col].value_counts().dropna().plot(kind='box')
 
     return numerical_figures, categorical_figures
+
+
+def scatter_plot(X_after_transformations, **kwargs):
+    """
+    given a pandas DataFrame without categorical data plots scatterplot of the data for each
+    reducer in ml.reduce_dimensions()
+    :param X_after_transformations: [pandas DataFrame] predictor columns without categorical data
+    :param kwargs: passed to pandas.Series.plot
+    """
+    figures = []
+    reducer_to_results = ml.reduce_dimensions(X_after_transformations, n_components=2)
+    for i, reducer_results in enumerate(reducer_to_results.values()):
+        figures.append(plt.figure(i))
+        plt.suptitle(reducer_results[0])
+        reducer_results[1].plot(kind='scatter', **kwargs)
+    return figures
 
 
 def contingency_table(X, pipeline_results, y=None):
