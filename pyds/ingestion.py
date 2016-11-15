@@ -7,6 +7,7 @@
 
 import pandas as pd
 from sklearn.model_selection import train_test_split
+
 from pyds import constants
 
 
@@ -17,7 +18,7 @@ def _get_file_extension(file_path):
     :param file_path: the path of an input file
     :return: the extension of the file
     """
-    if file_path is None:
+    if not file_path:
         raise ValueError('file path is None')
     else:
         file_extension = file_path.split(".")[-1]

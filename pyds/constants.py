@@ -6,9 +6,9 @@
 
 # ingestion
 
-FILE_EXTENSION_TO_READ_ATTRIBUTE = {'csv': 'read_csv', 'excel': 'read_excel', 'hdf': 'read_hdf', 'sql': 'read_sql',
-                                    'json': 'read_json', 'html': 'read_html', 'stata': 'read_stata', 'sas': 'read_sas',
-                                    'pickle': 'read_pickle'}  # supported file extensions
+FILE_EXTENSION_TO_READ_ATTRIBUTE = {'csv': 'read_csv', 'xls': 'read_excel', 'xlsx': 'read_excel',
+                                    'sql': 'read_sql', 'json': 'read_json', 'html': 'read_html', 'stata': 'read_stata',
+                                    'sas': 'read_sas', 'pickle': 'read_pickle'}  # supported file extensions
 NUMERIC_TYPES = ('int16', 'int32', 'int64', 'float16', 'float32', 'float64')
 TEST_SPLIT_SIZE = 0.3
 
