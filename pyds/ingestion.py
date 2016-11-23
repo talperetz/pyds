@@ -5,6 +5,7 @@
     and splits the data for train and test
 """
 
+import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
 
@@ -39,7 +40,12 @@ def read(*args):
     partial_dfs = []
     for index, file_path in enumerate(args):
         pd_read_function = getattr(pd, constants.FILE_EXTENSION_TO_READ_ATTRIBUTE[_get_file_extension(file_path)])
-        partial_dfs.append(pd_read_function(file_path))
+        partial_df = pd_read_function(file_path)
+
+        # remove wrapper collections if exist
+        if not (type(partial_df) in [np.array, pd.DataFrame]):
+            partial_df = partial_df[0]
+        partial_dfs.append(partial_df)
     return pd.concat(partial_dfs)
 
 
@@ -49,15 +55,23 @@ def validate_dataset(df):
 
 
 def get_train_test_splits(train_df, test_paths, target_column):
-    if (target_column is not None) and (target_column in train_df.columns) and (len(train_df[target_column].index) > 0):
+    if (target_column is None) or (target_column not in train_df.columns) or (len(train_df[target_column].index) == 0):
+        raise ValueError("target column doesn't exist on train set")
+    else:
         y_train = train_df[target_column]
         X_train = train_df.drop(target_column, axis=1)
         is_supervised = True
-        if test_paths is not None:
+        split_train = False
+        if test_paths:
             test_df = read(test_paths)
-            y_test = test_df[target_column]
-            X_test = test_df.drop(target_column, axis=1)
+            if (target_column in test_df.columns) and (len(test_df[target_column].index) > 0):
+                y_test = test_df[target_column]
+                X_test = test_df.drop(target_column, axis=1)
+            else:
+                split_train = True
         else:
+            split_train = True
+        if split_train:
             X_train, X_test, y_train, y_test = train_test_split(X_train, y_train, test_size=constants.TEST_SPLIT_SIZE)
     return X_train, X_test, y_train, y_test, is_supervised
 
@@ -75,7 +89,7 @@ def infer_columns_statistical_types(X, y=None):
     unique_df = df.apply(pd.Series.nunique)
     dist_ratios = unique_df / df.apply(pd.Series.count)
     id_cols = dist_ratios.where(dist_ratios == 1).dropna().index.tolist()
-    suspected_numerical_cols = set(df.select_dtypes(include=constants.NUMERIC_TYPES).columns.drop(id_cols).tolist())
+    suspected_numerical_cols = set(df.select_dtypes(include=constants.NUMERIC_TYPES).columns).difference(id_cols)
     numerical_cols = list(
         set(unique_df.where(unique_df > constants.CATEGORICAL_THRESHOLD).dropna().index.tolist()).intersection(
             suspected_numerical_cols))
@@ -102,8 +116,8 @@ def adjust_columns_types(cols_to_convert_cat, X_train, X_test, y_train, y_test):
         # adjust Y dataframes
         if y_train.name in cols_to_convert_cat:
             adjusted_y_train = y_train.astype(str)
-            adjusted_y_test = y_test.astype(str)
             cols_to_convert_cat.remove(y_train.name)
+            adjusted_y_test = y_test.astype(str)
 
         # adjust X dataframes
         adjusted_X_train[cols_to_convert_cat] = X_train[cols_to_convert_cat].apply(lambda num_col: num_col.astype(str))

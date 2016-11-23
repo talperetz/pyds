@@ -4,6 +4,8 @@
 :TL;DR: this module is responsible for the transformation and creation and selection of features
 """
 
+from collections import defaultdict
+
 import numpy as np
 import pandas as pd
 from sklearn.ensemble import RandomForestRegressor
@@ -25,25 +27,26 @@ def transform_train_columns(X_train, pipeline_results):
     """
     numerical_cols = list(set(pipeline_results.Ingestion.numerical_cols).intersection(X_train.columns.tolist()))
     categorical_cols = list(set(pipeline_results.Ingestion.categorical_cols).intersection(X_train.columns.tolist()))
-    cat_encoder, num_scaler, num_transformations, cat_transformations = (None for i in range(4))
-    transformed_nd = X_train.copy()
+    cat_encoder, num_scaler, num_transformations, cat_transformations = (None for _ in range(4))
+    transformed_df = X_train.copy()
     if len(numerical_cols) > 0:
         num_scaler = MinMaxScaler()
         transformed_num_cols = num_scaler.fit_transform(X_train[numerical_cols])
-        transformed_nd = transformed_num_cols
+        transformed_num_cols = pd.DataFrame(data=transformed_num_cols, index=X_train.index, columns=numerical_cols)
+        transformed_df = transformed_num_cols
         num_transformations = [num_scaler]
 
     if len(categorical_cols) > 0:
-        cat_encoder = LabelEncoder()
-        transformed_cat_cols = X_train[categorical_cols].apply(lambda col: cat_encoder.fit_transform(col), axis=1)
-        transformed_nd = transformed_cat_cols
-        cat_transformations = [cat_encoder]
+        col_to_encoder = defaultdict(LabelEncoder)
+
+        # Encoding the variable
+        transformed_cat_cols = X_train[categorical_cols].apply(lambda col: col_to_encoder[col.name].fit_transform(col))
+
+        transformed_df = transformed_cat_cols
+        cat_transformations = [col_to_encoder]
 
     if (len(numerical_cols) > 0) and (len(categorical_cols) > 0):
-        transformed_cat_df = pd.DataFrame(data=transformed_cat_cols, columns=X_train[categorical_cols].columns)
-        transformed_num_df = pd.DataFrame(data=transformed_num_cols, columns=X_train[numerical_cols].columns)
-        transformed_nd = pd.concat([transformed_cat_df, transformed_num_df], axis=1)
-    transformed_df = pd.DataFrame(data=transformed_nd, columns=X_train.columns)
+        transformed_df = pd.concat([transformed_cat_cols, transformed_num_cols], axis=1)
     return transformed_df, num_transformations, cat_transformations
 
 
@@ -55,7 +58,6 @@ def transform_test_columns(X_test, pipeline_results):
     :return: dataframe transformed exactly the same way the train set have transformed
     """
     numerical_cols = pipeline_results.Ingestion.numerical_cols
-    categorical_cols = pipeline_results.Ingestion.categorical_cols
     num_transformations = pipeline_results.Features.num_transformations
     cat_transformations = pipeline_results.Features.cat_transformations
     transformed_df = X_test.copy()
@@ -66,11 +68,10 @@ def transform_test_columns(X_test, pipeline_results):
             transformed_cols = transformer.transform(transformed_cols)
         transformed_df[x_test_numerical_cols] = transformed_cols
     if (cat_transformations is not None) and any(cat_transformations):
-        x_test_categorical_cols = list(set(categorical_cols).intersection(transformed_df.columns.tolist()))
-        transformed_cols = transformed_df[x_test_categorical_cols]
-        for transformer in cat_transformations:
-            transformed_cols = transformer.transform(transformed_cols)
-        transformed_df[x_test_categorical_cols] = transformed_cols
+        for col_to_transformer in cat_transformations:
+            for col_name in col_to_transformer:
+                transformer = col_to_transformer[col_name]
+                transformed_df[col_name] = transformer.transform(transformed_df[col_name])
     return transformed_df
 
 
@@ -122,11 +123,10 @@ def create_features(X, y, pipeline_results):
     if len(X_num.columns) > 0:
         poly = PolynomialFeatures()
         log_transformer = FunctionTransformer(func=np.log)
-
         poly_features = pd.DataFrame(data=poly.fit_transform(X_num),
                                      columns=poly.get_feature_names(X_num.columns.tolist()), index=X_num.index)
         log_features = pd.DataFrame(data=log_transformer.fit_transform(X_num),
-                                    columns=['log_%s' % feature for feature in X_num.columns.tolist()],
+                                    columns=('log_%s' % col_name for col_name in numerical_cols),
                                     index=X_num.index)
         # replace inf values with largest non-inf value * NEG_INF_REPRESENTATION
         replacements = {
@@ -145,7 +145,9 @@ def create_features(X, y, pipeline_results):
 
     if len(X_cat.columns) > 0:
         one_hot = OneHotEncoder()
-        one_hot_features = pd.DataFrame(data=one_hot.fit_transform(X_cat), index=X_cat.index)
+        one_hot_features = pd.DataFrame(data=one_hot.fit_transform(X_cat).toarray(), index=X_cat.index,
+                                        columns=['1_hot_%s' % i for i in
+                                                 range(sum([len(X_cat[col].unique()) for col in X_cat]))])
         created_features.update(one_hot_features.columns.tolist())
 
     return pd.concat([df for df in [poly_features, log_features, one_hot_features] if df is not None],

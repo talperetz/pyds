@@ -5,6 +5,10 @@
 :Links: https://www.analyticsvidhya.com/blog/2015/01/scikit-learn-python-machine-learning-tool/
 """
 
+from collections import defaultdict, Counter
+
+import pandas as pd
+from orangecontrib.associate.fpgrowth import association_rules, frequent_itemsets, rules_stats
 from sklearn import metrics
 from sklearn.cluster import KMeans, SpectralClustering, MiniBatchKMeans, DBSCAN, AffinityPropagation
 from sklearn.decomposition import PCA, KernelPCA
@@ -23,10 +27,8 @@ from sklearn.neural_network import MLPClassifier
 from sklearn.svm import SVC
 from sklearn.svm import SVR
 from sklearn.tree import DecisionTreeClassifier
-from orangecontrib.associate.fpgrowth import association_rules, frequent_itemsets, rules_stats
+
 from pyds import constants
-import pandas as pd
-from collections import defaultdict, Counter
 
 
 def classify(X_train, X_test, y_train, y_test):
@@ -192,7 +194,7 @@ def reduce_dimensions(df, reduce_cols=None, n_components=None):
     :param n_components: number of components for dimensionality reduction algorithm
     :return: dictionary of reduction algorithm to it's name and reduced df
     """
-    if not reduce_cols and (set(reduce_cols).issubset(set(df.columns.tolist()))) and (
+    if reduce_cols and (set(reduce_cols).issubset(set(df.columns.tolist()))) and (
                 len(df[reduce_cols].index) > 0):
         X = df[reduce_cols].copy()
     else:
