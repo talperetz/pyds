@@ -5,7 +5,6 @@
 """
 
 # ingestion
-
 FILE_EXTENSION_TO_READ_ATTRIBUTE = {'csv': 'read_csv', 'xls': 'read_excel', 'xlsx': 'read_excel',
                                     'sql': 'read_sql', 'json': 'read_json', 'html': 'read_html', 'stata': 'read_stata',
                                     'sas': 'read_sas', 'pickle': 'read_pickle'}  # supported file extensions
@@ -27,3 +26,6 @@ NEG_INF_REPRESENTATION = -10
 
 # ML
 CLUSTERING_METRICS = ('completeness_score', 'homogeneity_score', 'mutual_info_score', 'adjusted_rand_score')
+
+# logging
+LOGGER_CONFIGURATION_RELATIVE_PATH = "../conf/logging.conf"
