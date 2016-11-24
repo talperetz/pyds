@@ -7,17 +7,27 @@
 """
 
 import os
-import time
 import unittest
+
+from pyds import constants
 
 
 class PipelineTestCase(unittest.TestCase):
+    logger = None
+
+    def setUp(self):
+        import logging.config
+        log_conf_path = os.path.abspath(constants.LOGGER_CONFIGURATION_RELATIVE_PATH)
+        logging.config.fileConfig(log_conf_path)
+        self.logger = logging.getLogger(__name__)
+
     def test_pipeline(self):
         """
         this function walks on all files in each subdirectory in resources/datasets directory
         finds the paths of train set and test set files
         and asserts the whole pipeline to check basic functionality
         """
+        from pyds import pipeline
         root_dir = os.path.abspath("../resources/datasets/")
         for subdir, dirs, files in os.walk(root_dir):
             train_path, test_path = None, None
@@ -28,7 +38,7 @@ class PipelineTestCase(unittest.TestCase):
                     elif 'test' in file:
                         test_path = os.path.join(subdir, file)
             if train_path:
-                logger.debug('train_set: %s \n test_set: %s' % (train_path, test_path))
+                self.logger.debug('train_set: %s \n test_set: %s' % (train_path, test_path))
                 pipeline_results = pipeline.exec_pipeline(train_paths=train_path, test_paths=test_path,
                                                           target_column='target')
                 try:
@@ -38,7 +48,7 @@ class PipelineTestCase(unittest.TestCase):
                     self.assert_features(pipeline_results)
                     self.assert_ml(pipeline_results)
                 except AssertionError as e:
-                    logger.error(e)
+                    self.logger.error(e)
 
     def assert_ingestion(self, pipeline_results):
         self.assertIsNotNone(pipeline_results.Ingestion.initial_X_train)
@@ -73,14 +83,4 @@ class PipelineTestCase(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    import logging.config
-
-    LOG_CONF_PATH = os.path.abspath("../conf/logging.conf")
-    logging.config.fileConfig(LOG_CONF_PATH)
-    logger = logging.getLogger(__name__)
-
-    # the import is after we have configured logger properties so the module would use correct log configuration
-    from pyds import pipeline
-
-    time.sleep(2)
     unittest.main()
