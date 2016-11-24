@@ -34,7 +34,12 @@ from pyds import constants
 def classify(X_train, X_test, y_train, y_test):
     """
     given the train and test set with their labels returns the best_classifier according to the metric,
-    it's predictions on the test set and it's metric score
+    it's predictions on the test set and it's metric score.
+
+    classification is the problem of identifying to which of a set of categories (sub-populations) a new observation
+    belongs, on the basis of a training set of data containing observations (or instances) whose category membership
+    is known.
+
     :param X_train: training dataframe
     :param y_train: training true labels (target var)
     :param X_test: test dataframe
@@ -70,7 +75,12 @@ def classify(X_train, X_test, y_train, y_test):
 def regress(X_train, X_test, y_train, y_test):
     """
     given the train and test set with their labels returns the best_classifier according to the metric,
-    it's predictions on the test set and it's metric score
+    it's predictions on the test set and it's metric score.
+
+    regression analysis is a statistical process for estimating the relationships among variables.
+    It includes many techniques for modeling and analyzing several variables, when the focus is on the relationship
+    between a dependent variable and one or more independent variables
+
     :param X_train: training dataframe
     :param y_train: training true labels (target var)
     :param X_test: test dataframe
@@ -106,7 +116,7 @@ def regress(X_train, X_test, y_train, y_test):
 
 def _analyze_clusters(X, labels_pred, algorithm_name, labels_true=None):
     """
-    given pandas DataFrame and labels of each point returns dictionary of cluster_num to list of cluster items
+    given pandas DataFrame and labels of each point returns dictionary of cluster_num to list of cluster items.
     :param X: pandas DataFrame
     :param labels_pred: numpy.ndarray with clustering labels of each point
     :param labels_true: numpy.ndarray with real labels of each point
@@ -152,7 +162,12 @@ def _analyze_clusters(X, labels_pred, algorithm_name, labels_true=None):
 def create_clusters(df, cluster_cols, n_clusters=None, labels_true=None):
     """
     given a dataframe, relevant columns for clustering and num of clusters [optional]
-    returns a dictionary of clustering algorithm to it's name, labels and metrics
+    returns a dictionary of clustering algorithm to it's name, labels and metrics.
+
+    Cluster analysis or clustering is the task of grouping a set of objects in such a way that objects in the same
+    group (called a cluster) are more similar (in some sense or another) to each other than to those
+     in other groups (clusters).
+
     :param df: the dataframe upon we want to perform clustering
     :param cluster_cols: relevant columns for clustering
     :param n_clusters: num of clusters if known
@@ -188,7 +203,11 @@ def create_clusters(df, cluster_cols, n_clusters=None, labels_true=None):
 def reduce_dimensions(df, reduce_cols=None, n_components=None):
     """
     given a dataframe, columns to reduce and number of components for dimensionality reduction algorithm
-    returns a dictionary of reduction algorithm to it's name and reduced df
+    returns a dictionary of reduction algorithm to it's name and reduced df.
+
+    dimensionality reduction or dimension reduction is the process of reducing the number of random variables under
+     consideration, via obtaining a set of principal variables.
+
     :param df: pandas dataframe
     :param reduce_cols: columns to perform dimensionality reduction on
     :param n_components: number of components for dimensionality reduction algorithm
@@ -224,20 +243,16 @@ def reduce_dimensions(df, reduce_cols=None, n_components=None):
     return reducer_to_results
 
 
-# http://aimotion.blogspot.co.il/2013/01/machine-learning-and-data-mining.html
-# https://github.com/biolab/orange3-associate
-"""
-Association analysis is the task of finding interesting relationships in large data sets.
-There hidden relationships are then expressed as a collection of association rules and frequent item sets.
-Frequent item sets are simply a collection of items that frequently occur together.
-And association rules suggest a strong relationship that exists between two items.
-"""
-
-
 def associate_rules(df, min_support, min_confidence):
     """
     given a pandas DataFrame, minimum support level and minimum confidence level
-    returns dataframe with rules and statistics
+    returns dataframe with rules and statistics.
+
+    Association analysis is the task of finding interesting relationships in large data sets.
+    There hidden relationships are then expressed as a collection of association rules and frequent item sets.
+    Frequent item sets are simply a collection of items that frequently occur together.
+    And association rules suggest a strong relationship that exists between two items.
+
     :param df: pandas DataFrame
     :param min_support: (float or int) – If float in range (0, 1), percent of minimal support for itemset to be considered
     frequent. If int > 1, the absolute number of instances. For example, general iterators don’t have defined length,
@@ -245,6 +260,7 @@ def associate_rules(df, min_support, min_confidence):
     :param min_confidence: (float) – Confidence percent. Defined as itemset_support / antecedent_support.
     :return: pandas DataFrame with columns 'antecedent', 'consequent', 'support', 'confidence', 'coverage', 'strength',
     'lift', 'leverage'
+    :links: http://aimotion.blogspot.co.il/2013/01/machine-learning-and-data-mining.html, https://github.com/biolab/orange3-associate
     """
     matrix = df.to_matrix()
     itemsets = frequent_itemsets(matrix, min_support)
@@ -258,7 +274,11 @@ def associate_rules(df, min_support, min_confidence):
 def detect_anomalies(X, y=None, contamination=0.1):
     """
     given a pandas DataFrame returns dataframe with contamination*num of instances
-    rows dropped using isolation forest to detect outliers
+    rows dropped using isolation forest to detect outliers.
+
+    In data mining, anomaly detection (also outlier detection) is the identification of items,
+    events or observations which do not conform to an expected pattern or other items in a dataset.
+
     :param y: [pandas series] target column
     :param X: [pandas DataFrame] raw features
     :param contamination:  the proportion of outliers in the data set
