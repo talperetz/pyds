@@ -5,6 +5,8 @@
 """
 
 from collections import defaultdict
+from difflib import get_close_matches
+
 import pandas as pd
 from sklearn.preprocessing import LabelEncoder, MinMaxScaler
 
@@ -38,7 +40,6 @@ def transform_train_columns(X_train, pipeline_results, numerical_scaler=MinMaxSc
 
         # Encoding the variable
         transformed_cat_cols = X_train[categorical_cols].apply(lambda col: col_to_encoder[col.name].fit_transform(col))
-
         transformed_df = transformed_cat_cols
         cat_transformations = [col_to_encoder]
 
@@ -68,7 +69,17 @@ def transform_test_columns(X_test, pipeline_results):
         for col_to_transformer in cat_transformations:
             for col_name in col_to_transformer:
                 transformer = col_to_transformer[col_name]
-                transformed_df[col_name] = transformer.transform(transformed_df[col_name])
+                try:
+                    transformed_df[col_name] = transformer.transform(transformed_df[col_name])
+                # if there's a new value in the test set, get the closest value the transformer knows
+                except ValueError:
+                    new_val_to_closest_old_val = {}
+                    for index, new_val in transformed_df[col_name].iteritems():
+                        if new_val not in transformer.classes_:
+                            closest_old_val = get_close_matches(new_val, transformer.classes_, n=1, cutoff=0)[0]
+                            new_val_to_closest_old_val[new_val] = closest_old_val
+                    transformed_df[col_name] = transformer.transform(
+                        transformed_df[col_name].replace(new_val_to_closest_old_val))
     return transformed_df
 
 
