@@ -10,6 +10,7 @@ import numpy as np
 import pandas as pd
 from sklearn.neighbors import KNeighborsClassifier, KNeighborsRegressor
 from sklearn.preprocessing import Imputer, RobustScaler, LabelEncoder
+
 from pyds import constants, ml, transformations
 
 
@@ -80,6 +81,50 @@ def _knn_imputation(df, pipeline_results):
     return filled_df
 
 
+def _knn_imputation2(df, pipeline_results):
+    """
+    given a pandas DataFrame
+    returns the dataframe with filled values using K nearest neighbours imputation for each missing value
+    before applying knn the data is scaled using sklearn RobustScaler since outliers haven't been removed yet
+    :param df: pandas DataFrame
+    :return: pandas DataFrame without missing values
+    """
+    numerical_cols = pipeline_results.Ingestion.numerical_cols
+    filled_df = df.copy()  # the dataset we are filling and returning in the end
+    nan_df = df[df.isnull().any(axis=1)]
+    na_idxs_to_fill = set(nan_df.index)
+    #  iterate through all na_rows
+    while bool(na_idxs_to_fill):
+        nan_row_index = na_idxs_to_fill.pop()
+        nan_row = nan_df.loc[nan_row_index, :]
+        filled_cols = nan_row[nan_row.notnull()].index.tolist()
+        missed_cols = nan_row[nan_row.isnull()].index.tolist()
+
+        # test set = rows with same nan mask (same columns has nan)
+        test_df = nan_df[nan_df.isnull().apply(lambda row: row.equals(nan_row.isnull()), axis=1)]
+        # remove test set indexes from iterations because we are filling all of it in one iteration
+        na_idxs_to_fill = na_idxs_to_fill.difference(set(test_df.index))
+        # train set = all rows where the test set's missing columns are filled, in order to learn from
+        train_df = df.loc[:, filled_cols].dropna()
+        # preprocess dataset -> encode and dummify categorical columns, scale and group numerical data
+        transformed_train_df = transformations.preprocess_train_columns(train_df, numerical_scaler=RobustScaler())
+
+        for missed_col in missed_cols:
+            # scaling before applying KNN so the distance would be meaningful, using robust because the
+            # data is before outliers removal
+            Y_train = df.loc[transformed_train_df.index, missed_col].dropna()
+            X_train = transformed_train_df.loc[Y_train.index, :]
+
+            # using regressor if missed column is numerical and else classifier
+            knn_regressor = KNeighborsRegressor(n_neighbors=constants.KNN_N_NEIGHBORS, weights='distance')
+            knn_classifier = KNeighborsClassifier(n_neighbors=constants.KNN_N_NEIGHBORS, weights='distance')
+            neigh = knn_regressor if missed_col in numerical_cols else knn_classifier
+            neigh.fit(X_train, Y_train)
+            filled_df.loc[test_df.index, missed_col] = neigh.predict(
+                transformations.transform_test_columns(test_df[filled_cols].as_matrix()))
+    return filled_df
+
+
 def _simple_imputation(df, method):
     """
     given a pandas DataFrame and imputation method
@@ -140,7 +185,7 @@ def fill_missing_values(X, pipeline_results, method='knn',
     else:
         presence_series = _indicate_missing_values(df)
         if method == 'knn':
-            filled_df = _knn_imputation(df_to_fill, pipeline_results)
+            filled_df = _knn_imputation2(df_to_fill, pipeline_results)
         else:
             filled_df = _simple_imputation(df_to_fill, method)
         filled_df['presence_series'] = presence_series
@@ -173,8 +218,9 @@ def detect_outliers(X, pipeline_results, y=None, contamination=0.1, method='Isol
     :param method:
     :return: outliers indexes
     """
-    transformed_X = transformations.transform_train_columns(X, pipeline_results=pipeline_results,
-                                                            numerical_scaler=numerical_scaler)[0]
+    transformed_X = transformations.preprocess_train_columns(X, pipeline_results=pipeline_results,
+                                                             numerical_scaler=numerical_scaler)[0]
+    print(transformed_X)
     if method == 'IsolationForest':
         outliers = ml.detect_anomalies(transformed_X, y=y, contamination=contamination)
     else:

@@ -137,7 +137,7 @@ def exec_pipeline(train_paths, test_paths=None, target_column=None, columns_to_c
 
     # features engineering
     transformed_X_train, num_transformations, cat_transformations = \
-        transformations.transform_train_columns(cleaned_X_train, pipeline_results)
+        transformations.preprocess_train_columns(cleaned_X_train, pipeline_results)
     logger.info('categorical and numerical columns transformed')
     X_train_with_new_features, created_features = features_engineering.create_features(transformed_X_train,
                                                                                        ml_ready_y_train,
@@ -239,7 +239,7 @@ def low_mem_pipeline(train_paths, test_paths=None, target_column=None, columns_t
 
     # features engineering
     transformed_X_train, num_transformations, cat_transformations = \
-        transformations.transform_train_columns(cleaned_X_train, pipeline_results)
+        transformations.preprocess_train_columns(cleaned_X_train, pipeline_results)
     X_train_with_new_features, created_features = features_engineering.create_features(transformed_X_train,
                                                                                        ml_ready_y_train,
                                                                                        pipeline_results)
