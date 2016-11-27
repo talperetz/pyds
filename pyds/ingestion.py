@@ -35,7 +35,8 @@ def read(*args):
     given a collection of file paths representing relational data
     returns a pandas pandas DataFrame of the data
     :param args: collection of file paths representing an input file
-    :return: pandas pandas DataFrame
+    :param kwargs: keyword arguments to pass to pandas read function
+    :return: pandas DataFrame
     """
     partial_dfs = []
     for index, file_path in enumerate(args):
@@ -47,6 +48,25 @@ def read(*args):
             partial_df = partial_df[0]
         partial_dfs.append(partial_df)
     return pd.concat(partial_dfs)
+
+
+def _calc_optimal_chink_size():
+    pass
+
+
+def read_sparse(*args, **kwargs):
+    """
+    given a collection of file paths representing relational data
+    returns a pandas pandas DataFrame of the data
+    :param args: collection of file paths representing an input file
+    :param kwargs: keyword arguments to pass to pandas read function
+    :return: pandas DataFrame
+    """
+    chunks = read(args, iterator=True, chunksize=_calc_optimal_chink_size(), **kwargs)
+    sparse_chunks = []
+    for chunk in chunks:
+        sparse_chunks.append(chunk.to_sparse())
+    return pd.concat(sparse_chunks)
 
 
 def validate_dataset(df):

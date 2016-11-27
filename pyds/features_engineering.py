@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.linear_model import RandomizedLasso
-from sklearn.preprocessing import PolynomialFeatures, FunctionTransformer, LabelEncoder, OneHotEncoder, MinMaxScaler
+from sklearn.preprocessing import PolynomialFeatures, FunctionTransformer, MinMaxScaler
 
 from pyds import constants
 
@@ -26,13 +26,11 @@ def create_features(X, y, pipeline_results):
     discover-feature-engineering-how-to-engineer-features-and-how-to-get-good-at-it/>`_
     `Quora - feature engineering <https://www.quora.com/What-are-some-best-practices-in-Feature-Engineering>`_
     """
+    numerical_cols = list(set(pipeline_results.Ingestion.numerical_cols).difference([y.name]))
+    categorical_cols = list(set(pipeline_results.Ingestion.categorical_cols).difference([y.name]))
 
-    numerical_cols = [col_name for col_name in pipeline_results.Ingestion.numerical_cols if col_name != y.name]
-    categorical_cols = [col_name for col_name in pipeline_results.Ingestion.categorical_cols if
-                        col_name != y.name]
-
-    X_num = X[numerical_cols].copy()
-    X_cat = X[categorical_cols].copy()
+    X_num = X.loc[:, numerical_cols].copy()
+    X_cat = X.loc[:, categorical_cols].copy()
     created_features = set()
     poly_features, log_features, one_hot_features = None, None, None
     if len(X_num.columns) > 0:
@@ -54,17 +52,8 @@ def create_features(X, y, pipeline_results):
                     key=abs))}
         column_to_replacements = {col: replacements for col in log_features.columns.tolist()}
         log_features = log_features.replace(column_to_replacements)
-
         created_features.update(poly_features.columns.tolist())
         created_features.update(log_features.columns.tolist())
-
-    if len(X_cat.columns) > 0:
-        one_hot = OneHotEncoder()
-        one_hot_features = pd.DataFrame(data=one_hot.fit_transform(X_cat).toarray(), index=X_cat.index,
-                                        columns=['1_hot_%s' % i for i in
-                                                 range(sum([len(X_cat[col].unique()) for col in X_cat]))])
-        created_features.update(one_hot_features.columns.tolist())
-
     return pd.concat([df for df in [poly_features, log_features, one_hot_features] if df is not None],
                      axis=1), created_features
 

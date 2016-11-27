@@ -76,6 +76,12 @@ class PipelineResults:
         self.ML.clusterer_to_results = clusterer_to_results
         self.ML.scatter_plots = scatter_plots
 
+    def update_categorical_cols(self, new_cat_cols):
+        self.Ingestion.categorical_cols = new_cat_cols
+
+    def update_numerical_cols(self, new_num_cols):
+        self.Ingestion.numerical_cols = new_num_cols
+
 
 def exec_pipeline(train_paths, test_paths=None, target_column=None, columns_to_clusterize=None, n_clusters=None):
     """
@@ -137,19 +143,19 @@ def exec_pipeline(train_paths, test_paths=None, target_column=None, columns_to_c
 
     # features engineering
     transformed_X_train, num_transformations, cat_transformations = \
-        transformations.preprocess_train_columns(cleaned_X_train, pipeline_results)
+        transformations.preprocess_train_columns(cleaned_X_train, pipeline_results, update_columns_types=True)
     logger.info('categorical and numerical columns transformed')
     X_train_with_new_features, created_features = features_engineering.create_features(transformed_X_train,
                                                                                        ml_ready_y_train,
                                                                                        pipeline_results)
-    logger.info('created new simple features:\n%s' % X_train_with_new_features.columns.tolist())
+    logger.info('created new simple features, overall %s:\n%s' % (
+        len(X_train_with_new_features.columns.tolist()), X_train_with_new_features.columns.tolist()))
     ml_ready_X_train, selected_features = features_engineering.select_features(X_train_with_new_features,
                                                                                ml_ready_y_train)
-    logger.info('selected features:\n%s' % ml_ready_X_train.columns.tolist())
+    logger.info(
+        'selected %s features:\n%s' % (len(ml_ready_X_train.columns.tolist()), ml_ready_X_train.columns.tolist()))
     pipeline_results.save_features(num_transformations, cat_transformations, created_features, selected_features)
 
-    print(ml_ready_X_train.shape)
-    print(ml_ready_X_train.columns.tolist())
     # transform X_test as X_train
     X_test_cols_to_drop = list(set(id_columns).intersection(X_test.columns.tolist()))
     if X_test_cols_to_drop:
@@ -161,13 +167,10 @@ def exec_pipeline(train_paths, test_paths=None, target_column=None, columns_to_c
     X_test_with_new_features, _ = features_engineering.create_features(transformed_X_test,
                                                                        y_test,
                                                                        pipeline_results)
-    print(X_test_with_new_features.shape)
-    print(X_test_with_new_features.columns.tolist())
-
-    ml_ready_X_test = X_test_with_new_features[
-        list(set(selected_features).intersection(X_test_with_new_features.columns.tolist()))]
-    print(ml_ready_X_test.shape)
-    print(ml_ready_X_test.columns.tolist())
+    ml_ready_X_test = X_test_with_new_features.loc[:,
+                      list(set(selected_features).intersection(X_test_with_new_features.columns.tolist()))]
+    ml_ready_X_train = ml_ready_X_train.loc[:,
+                       list(set(ml_ready_X_train.columns).intersection(ml_ready_X_test.columns.tolist()))]
     logger.info('test set transformed successfully\n applying ML models')
     ml_start_time = time.time()
     # ML
@@ -239,7 +242,7 @@ def low_mem_pipeline(train_paths, test_paths=None, target_column=None, columns_t
 
     # features engineering
     transformed_X_train, num_transformations, cat_transformations = \
-        transformations.preprocess_train_columns(cleaned_X_train, pipeline_results)
+        transformations.preprocess_train_columns(cleaned_X_train, pipeline_results, update_columns_types=True)
     X_train_with_new_features, created_features = features_engineering.create_features(transformed_X_train,
                                                                                        ml_ready_y_train,
                                                                                        pipeline_results)

@@ -107,7 +107,7 @@ def _knn_imputation2(df, pipeline_results):
         # train set = all rows where the test set's missing columns are filled, in order to learn from
         train_df = df.loc[:, filled_cols].dropna()
         # preprocess dataset -> encode and dummify categorical columns, scale and group numerical data
-        transformed_train_df = transformations.preprocess_train_columns(train_df, numerical_scaler=RobustScaler())
+        transformed_train_df = transformations.preprocess_train_columns(train_df, col_to_scaler=RobustScaler)
 
         for missed_col in missed_cols:
             # scaling before applying KNN so the distance would be meaningful, using robust because the
@@ -219,8 +219,7 @@ def detect_outliers(X, pipeline_results, y=None, contamination=0.1, method='Isol
     :return: outliers indexes
     """
     transformed_X = transformations.preprocess_train_columns(X, pipeline_results=pipeline_results,
-                                                             numerical_scaler=numerical_scaler)[0]
-    print(transformed_X)
+                                                             col_to_scaler=numerical_scaler)[0]
     if method == 'IsolationForest':
         outliers = ml.detect_anomalies(transformed_X, y=y, contamination=contamination)
     else:
