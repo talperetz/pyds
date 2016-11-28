@@ -14,12 +14,26 @@ from pyds import constants
 
 class PipelineTestCase(unittest.TestCase):
     logger = None
+    is_warnings_traced = False
 
     def setUp(self):
+        import traceback
+        import warnings
+        import sys
         import logging.config
+
+        # setting log configuration
         log_conf_path = os.path.abspath(constants.LOGGER_CONFIGURATION_RELATIVE_PATH)
         logging.config.fileConfig(log_conf_path)
         self.logger = logging.getLogger(__name__)
+
+        def warn_with_traceback(message, category, filename, lineno, file=None, line=None):
+            traceback.print_stack()
+            log = file if hasattr(file, 'write') else sys.stderr
+            log.write(warnings.formatwarning(message, category, filename, lineno, line))
+
+        if self.is_warnings_traced:
+            warnings.showwarning = warn_with_traceback
 
     def test_pipeline(self):
         """
@@ -51,32 +65,33 @@ class PipelineTestCase(unittest.TestCase):
                     self.logger.error(e)
 
     def assert_ingestion(self, pipeline_results):
-        self.assertIsNotNone(pipeline_results.Ingestion.initial_X_train)
-        self.assertIsNotNone(pipeline_results.Ingestion.initial_X_test)
-        self.assertIsNotNone(pipeline_results.Ingestion.initial_y_train)
-        self.assertIsNotNone(pipeline_results.Ingestion.initial_y_test)
-        self.assertTrue((pipeline_results.Ingestion.numerical_cols is not None) or (
-            pipeline_results.Ingestion.categorical_cols is not None) or (
-                            pipeline_results.Ingestion.id_cols is not None))
+        self.assertIsNotNone(pipeline_results.ingestion_results.initial_X_train)
+        self.assertIsNotNone(pipeline_results.ingestion_results.initial_X_test)
+        self.assertIsNotNone(pipeline_results.ingestion_results.initial_y_train)
+        self.assertIsNotNone(pipeline_results.ingestion_results.initial_y_test)
+        self.assertTrue((pipeline_results.ingestion_results.numerical_cols is not None) or (
+            pipeline_results.ingestion_results.categorical_cols is not None) or (
+                            pipeline_results.ingestion_results.id_cols is not None))
 
     def assert_exploration(self, pipeline_results):
-        self.assertTrue((pipeline_results.Exploration.num_description is not None) or (
-            pipeline_results.Exploration.cat_description is not None))
-        self.assertIsNotNone(pipeline_results.Exploration.hist)
-        self.assertIsNotNone(pipeline_results.Exploration.box_plot)
-        self.assertIsNotNone(pipeline_results.Exploration.contingency_table)
-        self.assertIsNotNone(pipeline_results.Exploration.correlations)
+        self.assertTrue((pipeline_results.exploration_results.num_description is not None) or (
+            pipeline_results.exploration_results.cat_description is not None))
+        self.assertIsNotNone(pipeline_results.exploration_results.hist)
+        self.assertIsNotNone(pipeline_results.exploration_results.box_plot)
+        self.assertIsNotNone(pipeline_results.exploration_results.contingency_table)
+        self.assertIsNotNone(pipeline_results.exploration_results.correlations)
 
     def assert_cleaning(self, pipeline_results):
         pass
 
     def assert_features(self, pipeline_results):
-        self.assertIsNotNone(pipeline_results.Features.created_features)
+        self.assertIsNotNone(pipeline_results.features_results.created_features)
 
     def assert_ml(self, pipeline_results):
         self.assertTrue(
-            (pipeline_results.ML.best_model is not None) or (pipeline_results.ML.clusterer_to_results is not None))
-        self.assertIsNotNone(pipeline_results.ML.scatter_plots)
+            (pipeline_results.ml_results.best_model is not None) or (
+                pipeline_results.ml_results.clusterer_to_results is not None))
+        self.assertIsNotNone(pipeline_results.ml_results.scatter_plots)
 
     def assert_ui(self, pipeline_results):
         pass

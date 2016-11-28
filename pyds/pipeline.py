@@ -34,47 +34,61 @@ class PipelineResults:
     class Cleaning:
         na_rows, imputation, outliers = (None for _ in range(3))
 
+    class Transformations:
+        num_transformations, cat_transformations, numerical_cols, categorical_cols, col_to_width_edges, col_to_depth_edges = (
+            None for _ in range(6))
+
     class Features:
         transformations, created_features = (None for _ in range(2))
 
     class ML:
         best_model, predictions_df, scores, clusterer_to_results, scatter_plots = (None for _ in range(5))
 
+    ingestion_results, exploration_results, cleaning_results, transformations_results, features_results, ml_results = \
+        Ingestion(), Exploration(), Cleaning(), Transformations(), Features(), ML()
+
     def save_ingestion_results(self, X_train, X_test, y_train, y_test, numerical_cols, categorical_cols, id_cols):
-        self.Ingestion.initial_X_train = X_train
-        self.Ingestion.initial_X_test = X_test
-        self.Ingestion.initial_y_train = y_train
-        self.Ingestion.initial_y_test = y_test
-        self.Ingestion.numerical_cols = numerical_cols
-        self.Ingestion.categorical_cols = categorical_cols
-        self.Ingestion.id_cols = id_cols
+        self.ingestion_results.initial_X_train = X_train
+        self.ingestion_results.initial_X_test = X_test
+        self.ingestion_results.initial_y_train = y_train
+        self.ingestion_results.initial_y_test = y_test
+        self.ingestion_results.numerical_cols = numerical_cols
+        self.ingestion_results.categorical_cols = categorical_cols
+        self.ingestion_results.id_cols = id_cols
 
     def save_exploration_results(self, num_description, cat_description, hist, box_plot, contingency_table,
                                  correlations):
-        self.Exploration.num_description = num_description
-        self.Exploration.cat_description = cat_description
-        self.Exploration.hist = hist
-        self.Exploration.box_plot = box_plot
-        self.Exploration.contingency_table = contingency_table
-        self.Exploration.correlations = correlations
+        self.exploration_results.num_description = num_description
+        self.exploration_results.cat_description = cat_description
+        self.exploration_results.hist = hist
+        self.exploration_results.box_plot = box_plot
+        self.exploration_results.contingency_table = contingency_table
+        self.exploration_results.correlations = correlations
 
     def save_cleaning_results(self, na_rows, imputation, outliers):
-        self.Cleaning.na_rows = na_rows
-        self.Cleaning.imputation = imputation
-        self.Cleaning.outliers = outliers
+        self.cleaning_results.na_rows = na_rows
+        self.cleaning_results.imputation = imputation
+        self.cleaning_results.outliers = outliers
 
-    def save_features(self, num_transformations, cat_transformations, created_features, selected_features):
-        self.Features.num_transformations = num_transformations
-        self.Features.cat_transformations = cat_transformations
-        self.Features.created_features = created_features
-        self.Features.selected_features = selected_features
+    def save_transformations(self, num_transformations, cat_transformations, numerical_cols, categorical_cols,
+                             col_to_width_edges, col_to_depth_edges):
+        self.transformations_results.num_transformations = num_transformations
+        self.transformations_results.cat_transformations = cat_transformations
+        self.transformations_results.numerical_cols = numerical_cols
+        self.transformations_results.categorical_cols = categorical_cols
+        self.transformations_results.col_to_width_edges = col_to_width_edges
+        self.transformations_results.col_to_depth_edges = col_to_depth_edges
+
+    def save_features(self, created_features, selected_features):
+        self.features_results.created_features = created_features
+        self.features_results.selected_features = selected_features
 
     def save_models(self, best_model, predictions_df, scores, clusterer_to_results, scatter_plots):
-        self.ML.best_model = best_model
-        self.ML.predictions_df = predictions_df
-        self.ML.scores = scores
-        self.ML.clusterer_to_results = clusterer_to_results
-        self.ML.scatter_plots = scatter_plots
+        self.ml_results.best_model = best_model
+        self.ml_results.predictions_df = predictions_df
+        self.ml_results.scores = scores
+        self.ml_results.clusterer_to_results = clusterer_to_results
+        self.ml_results.scatter_plots = scatter_plots
 
     def update_categorical_cols(self, new_cat_cols):
         self.Ingestion.categorical_cols = new_cat_cols
@@ -141,10 +155,14 @@ def exec_pipeline(train_paths, test_paths=None, target_column=None, columns_to_c
     ml_ready_y_train = y_train.drop(outliers, axis=0)
     pipeline_results.save_cleaning_results(na_rows, imputation, outliers)
 
-    # features engineering
-    transformed_X_train, num_transformations, cat_transformations = \
-        transformations.preprocess_train_columns(cleaned_X_train, pipeline_results, update_columns_types=True)
+    # preprocessing
+    transformed_X_train, num_transformations, cat_transformations, updated_num_cols, updated_cat_cols, col_to_width_edges, col_to_depth_edges = transformations.preprocess_train_columns(
+        cleaned_X_train, pipeline_results)
     logger.info('categorical and numerical columns transformed')
+    pipeline_results.save_transformations(num_transformations, cat_transformations, updated_num_cols, updated_cat_cols,
+                                          col_to_width_edges, col_to_depth_edges)
+
+    # features engineering
     X_train_with_new_features, created_features = features_engineering.create_features(transformed_X_train,
                                                                                        ml_ready_y_train,
                                                                                        pipeline_results)
@@ -154,7 +172,7 @@ def exec_pipeline(train_paths, test_paths=None, target_column=None, columns_to_c
                                                                                ml_ready_y_train)
     logger.info(
         'selected %s features:\n%s' % (len(ml_ready_X_train.columns.tolist()), ml_ready_X_train.columns.tolist()))
-    pipeline_results.save_features(num_transformations, cat_transformations, created_features, selected_features)
+    pipeline_results.save_features(created_features, selected_features)
 
     # transform X_test as X_train
     X_test_cols_to_drop = list(set(id_columns).intersection(X_test.columns.tolist()))
@@ -178,7 +196,7 @@ def exec_pipeline(train_paths, test_paths=None, target_column=None, columns_to_c
     # supervised problem
     if is_supervised:
         # classification problem
-        if target_column in pipeline_results.Ingestion.categorical_cols:
+        if target_column in pipeline_results.ingestion_results.categorical_cols:
             best_model, predictions_df, score = ml.classify(ml_ready_X_train, ml_ready_X_test, ml_ready_y_train,
                                                             y_test)
             logger.info('finished classification')
