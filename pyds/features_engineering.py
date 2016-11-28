@@ -26,11 +26,8 @@ def create_features(X, y, pipeline_results):
     discover-feature-engineering-how-to-engineer-features-and-how-to-get-good-at-it/>`_
     `Quora - feature engineering <https://www.quora.com/What-are-some-best-practices-in-Feature-Engineering>`_
     """
-    numerical_cols = list(set(pipeline_results.Ingestion.numerical_cols).difference([y.name]))
-    categorical_cols = list(set(pipeline_results.Ingestion.categorical_cols).difference([y.name]))
-
+    numerical_cols = list(set(pipeline_results.transformations_results.numerical_cols).difference([y.name]))
     X_num = X.loc[:, numerical_cols].copy()
-    X_cat = X.loc[:, categorical_cols].copy()
     created_features = set()
     poly_features, log_features, one_hot_features = None, None, None
     if len(X_num.columns) > 0:

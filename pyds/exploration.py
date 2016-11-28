@@ -6,8 +6,9 @@
 
 import pandas as pd
 from matplotlib import pyplot as plt
-from pyds import ml
+
 from pyds import constants
+from pyds import ml
 
 
 def describe(X, pipeline_results, y=None, **kwargs):
@@ -20,8 +21,8 @@ def describe(X, pipeline_results, y=None, **kwargs):
     :return: pandas pandas DataFrame describing basic statistics about numeric columns
     """
     df = X.copy()
-    numerical_cols = pipeline_results.Ingestion.numerical_cols
-    categorical_cols = pipeline_results.Ingestion.categorical_cols
+    numerical_cols = pipeline_results.ingestion_results.numerical_cols
+    categorical_cols = pipeline_results.ingestion_results.categorical_cols
     num_description, cat_description = None, None
     if y is not None:
         df[y.name] = y
@@ -41,8 +42,8 @@ def hist(X, pipeline_results, y=None, **kwargs):
     :param y: [pandas Series] target column
     :param kwargs: passed to pandas.Series.hist
     """
-    numerical_cols = pipeline_results.Ingestion.numerical_cols
-    categorical_cols = pipeline_results.Ingestion.categorical_cols
+    numerical_cols = pipeline_results.ingestion_results.numerical_cols
+    categorical_cols = pipeline_results.ingestion_results.categorical_cols
     numerical_figures, categorical_figures = [], []
     df = X.copy()
     if y is not None:
@@ -72,8 +73,8 @@ def box_plot(X, pipeline_results, y=None, **kwargs):
     :param X: [pandas DataFrame] predictor columns
     :param kwargs: passed to pandas.Series.hist
     """
-    numerical_cols = pipeline_results.Ingestion.numerical_cols
-    categorical_cols = pipeline_results.Ingestion.categorical_cols
+    numerical_cols = pipeline_results.ingestion_results.numerical_cols
+    categorical_cols = pipeline_results.ingestion_results.categorical_cols
     numerical_figures, categorical_figures = [], []
     df = X.copy()
     df[y.name] = y
@@ -120,7 +121,7 @@ def contingency_table(X, pipeline_results, y=None):
     """
     df = X.copy()
     contingency_tables = []
-    categorical_cols = list(pipeline_results.Ingestion.categorical_cols)
+    categorical_cols = list(pipeline_results.ingestion_results.categorical_cols)
     cross_col = "count"
     if y is not None:
         cross_col = y

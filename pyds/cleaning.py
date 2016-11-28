@@ -9,7 +9,7 @@ from collections import defaultdict
 import numpy as np
 import pandas as pd
 from sklearn.neighbors import KNeighborsClassifier, KNeighborsRegressor
-from sklearn.preprocessing import Imputer, RobustScaler, LabelEncoder
+from sklearn.preprocessing import Imputer, RobustScaler, MinMaxScaler
 
 from pyds import constants, ml, transformations
 
@@ -36,60 +36,7 @@ def _knn_imputation(df, pipeline_results):
     :param df: pandas DataFrame
     :return: pandas DataFrame without missing values
     """
-    numerical_cols = pipeline_results.Ingestion.numerical_cols
-    categorical_cols = pipeline_results.Ingestion.categorical_cols
-    filled_df = df.copy()
-    nan_df = df[df.isnull().any(axis=1)]
-    na_idxs_to_pass = set(nan_df.index)
-    #  iterate through all na_rows
-    while bool(na_idxs_to_pass):
-        nan_row_index = na_idxs_to_pass.pop()
-        nan_row = nan_df.loc[nan_row_index, :]
-        filled_cols = nan_row[nan_row.notnull()].index.tolist()
-        missed_cols = nan_row[nan_row.isnull()].index.tolist()
-
-        # find rows with same nan mask (same columns has nan) and remove those from iterations
-        same_nan_rows = nan_df[nan_df.isnull().apply(lambda row: row.equals(nan_row.isnull()), axis=1)]
-        na_idxs_to_pass = na_idxs_to_pass.difference(set(same_nan_rows.index))
-        train_df = df[filled_cols].dropna()
-
-        # if train_df have categorical columns, use LabelEncoder to encode them
-        filled_cat_cols = list(set(categorical_cols).intersection(train_df.columns.tolist()))
-        if len(filled_cat_cols) > 0:
-            col_to_le = defaultdict(LabelEncoder)
-            df[filled_cat_cols].dropna().apply(lambda col: col_to_le[col.name].fit(col))
-            train_df.loc[:, filled_cat_cols] = train_df.loc[:, filled_cat_cols].apply(
-                lambda col: col_to_le[col.name].transform(col))
-
-            same_nan_rows.loc[:, filled_cat_cols] = same_nan_rows.loc[:, filled_cat_cols].apply(
-                lambda col: col_to_le[col.name].transform(col))
-
-        for missed_col in missed_cols:
-            # scaling before applying KNN so the distance would be meaningful, using robust because the
-            # data is before outliers removal
-            robust_scaler = RobustScaler()
-            Y_train = df.loc[train_df.index, missed_col].dropna()
-            X_train = robust_scaler.fit_transform(train_df.loc[Y_train.index, :])
-
-            # using regressor if missed column is numerical and else classifier
-            knn_regressor = KNeighborsRegressor(n_neighbors=constants.KNN_N_NEIGHBORS, weights='distance')
-            knn_classifier = KNeighborsClassifier(n_neighbors=constants.KNN_N_NEIGHBORS, weights='distance')
-            neigh = knn_regressor if missed_col in numerical_cols else knn_classifier
-            neigh.fit(X_train, Y_train)
-            filled_df.loc[same_nan_rows.index, missed_col] = neigh.predict(
-                robust_scaler.transform(same_nan_rows[filled_cols].as_matrix()))
-    return filled_df
-
-
-def _knn_imputation2(df, pipeline_results):
-    """
-    given a pandas DataFrame
-    returns the dataframe with filled values using K nearest neighbours imputation for each missing value
-    before applying knn the data is scaled using sklearn RobustScaler since outliers haven't been removed yet
-    :param df: pandas DataFrame
-    :return: pandas DataFrame without missing values
-    """
-    numerical_cols = pipeline_results.Ingestion.numerical_cols
+    numerical_cols = pipeline_results.ingestion_results.numerical_cols
     filled_df = df.copy()  # the dataset we are filling and returning in the end
     nan_df = df[df.isnull().any(axis=1)]
     na_idxs_to_fill = set(nan_df.index)
@@ -107,7 +54,9 @@ def _knn_imputation2(df, pipeline_results):
         # train set = all rows where the test set's missing columns are filled, in order to learn from
         train_df = df.loc[:, filled_cols].dropna()
         # preprocess dataset -> encode and dummify categorical columns, scale and group numerical data
-        transformed_train_df = transformations.preprocess_train_columns(train_df, col_to_scaler=RobustScaler)
+        transformed_train_df = \
+            transformations.preprocess_train_columns(train_df, pipeline_results,
+                                                     col_to_scaler=defaultdict(RobustScaler))[0]
 
         for missed_col in missed_cols:
             # scaling before applying KNN so the distance would be meaningful, using robust because the
@@ -121,7 +70,7 @@ def _knn_imputation2(df, pipeline_results):
             neigh = knn_regressor if missed_col in numerical_cols else knn_classifier
             neigh.fit(X_train, Y_train)
             filled_df.loc[test_df.index, missed_col] = neigh.predict(
-                transformations.transform_test_columns(test_df[filled_cols].as_matrix()))
+                transformations.transform_test_columns(test_df.loc[:, filled_cols], pipeline_results))
     return filled_df
 
 
@@ -185,7 +134,7 @@ def fill_missing_values(X, pipeline_results, method='knn',
     else:
         presence_series = _indicate_missing_values(df)
         if method == 'knn':
-            filled_df = _knn_imputation2(df_to_fill, pipeline_results)
+            filled_df = _knn_imputation(df_to_fill, pipeline_results)
         else:
             filled_df = _simple_imputation(df_to_fill, method)
         filled_df['presence_series'] = presence_series
@@ -205,7 +154,7 @@ def _get_column_outliers_std(column, m=3):
 
 
 def detect_outliers(X, pipeline_results, y=None, contamination=0.1, method='IsolationForest', m=3,
-                    numerical_scaler=None):
+                    numerical_scaler=defaultdict(MinMaxScaler)):
     """
     given a pandas DataFrame returns dataframe with contamination*num of instances
     rows indexes indicating outliers using isolation forest or m*std per column to detect outliers
