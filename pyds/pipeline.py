@@ -11,13 +11,6 @@ from pyds import ingestion, exploration, transformations, cleaning, features_eng
 logger = logging.getLogger(__name__)
 
 
-# Todo: python packaging:
-# http://www.aosabook.org/en/packaging.html
-
-# Todo: architecture
-# http://www.advogato.org/article/258.html
-
-
 class PipelineResults:
     """
     this class holds the results for each stage of the data science pipeline
