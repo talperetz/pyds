@@ -12,9 +12,15 @@ from sklearn.preprocessing import LabelEncoder, MinMaxScaler
 
 
 def _calc_optimal_num_of_bins(col):
+    """
+    given a collection of numerical values returns the optimal num of bins according to Freedman-Diaconis rule
+    :param col: collection of numerical values
+    :return: optimal num of bins according to Freedman-Diaconis rule
+    """
     iqr = np.subtract(*np.percentile(col, [75, 25]))
-    h = int(np.ceil((2 * iqr) / (len(col) ** (1 / 3))))
-    return h
+    h = int(np.ceil((2 * iqr) / (len(col) ** (1 / 3)))) + 1
+    optimal_n = int(np.round((max(col) - min(col)) / h))
+    return optimal_n
 
 
 def _pct_rank_qcut(series, n, edges=None):
@@ -24,6 +30,13 @@ def _pct_rank_qcut(series, n, edges=None):
 
 
 def _encode_categorical_columns(encode_df, expand_fit_df=None, col_to_encoder=None):
+    """
+    given a pandas dataframe with categorical attributes returns encoded dataframe, dictionary mapping column to encoder
+    :param encode_df: pandas dataframe with categorical attributes
+    :param expand_fit_df: optional dataframe to expand encode_df labels
+    :param col_to_encoder: dictionary mapping each column to a transformer used when you want prefitted transformers
+    :return: encoded dataframe, dictionary mapping column to encoder
+    """
     if expand_fit_df is not None:
         assert set(encode_df.columns).issubset(expand_fit_df.columns)
         expand_fit_df = pd.concat([encode_df, expand_fit_df], ignore_index=True)
@@ -42,6 +55,13 @@ def _encode_categorical_columns(encode_df, expand_fit_df=None, col_to_encoder=No
 
 
 def _transform_categorical_columns(train_categorical_df, test_categorical_df=None, col_to_encoder=None):
+    """
+    given a categorical dataframe returns transformed categorical dataframe based on col_to_encoder transformations
+    :param train_categorical_df: pandas dataframe with categorical attributes
+    :param test_categorical_df: pandas dataframe with categorical attributes
+    :param col_to_encoder: dictionary mapping each column to a transformer
+    :return: transformed categorical dataframe
+    """
     # assume there's an order - encode according to sort values
     label_encoded_df, col_to_encoder = _encode_categorical_columns(encode_df=train_categorical_df,
                                                                    expand_fit_df=test_categorical_df,
@@ -55,6 +75,12 @@ def _transform_categorical_columns(train_categorical_df, test_categorical_df=Non
 
 
 def _transform_numerical_columns(train_numerical_df, col_to_scaler=defaultdict(MinMaxScaler)):
+    """
+    given a numerical dataframe returns transformed numerical dataframe based on col_to_scaler transformations
+    :param train_numerical_df: pandas dataframe with numerical attributes
+    :param col_to_scaler: dictionary mapping each column to a transformer
+    :return: transformed numerical dataframe
+    """
     transformed_numerical_df = train_numerical_df.apply(
         lambda col: col_to_scaler[col.name].fit_transform(col))
     transformed_numerical_df = pd.DataFrame(data=transformed_numerical_df, index=train_numerical_df.index,
@@ -63,6 +89,13 @@ def _transform_numerical_columns(train_numerical_df, col_to_scaler=defaultdict(M
 
 
 def _discretize(numerical_df, col_to_width_edges=None, col_to_depth_edges=None):
+    """
+    given a numerical dataframe returns equal width and equal depth labeled dataframes and their bins dict
+    :param numerical_df: pandas DataFrame of numerical attributes
+    :param col_to_width_edges: used when you want preset bins
+    :param col_to_depth_edges: used when you want preset bins
+    :return: equal_width_num_df, col_to_width_edges, equal_depth_num_df, col_to_depth_edges
+    """
     is_edges_recieved = True
     if (not col_to_width_edges) and (not col_to_depth_edges):
         col_to_width_edges, col_to_depth_edges = {}, {}
