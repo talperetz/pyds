@@ -87,7 +87,6 @@ def _simple_imputation(df, method):
     return pd.DataFrame(data=imp.fit_transform(df), columns=df.columns, index=df.index)
 
 
-# todo: if doesn't work -> replace tuple in a string
 def _indicate_missing_values(df):
     """
     given a pandas DataFrame returns pandas Series indicating the presence of each row as tuple of booleans,
@@ -103,13 +102,12 @@ def _indicate_missing_values(df):
 
     else:
         # init series with True: assume all attributes are present
-        presence_series = pd.Series(index=df.index)
-        presence_series[presence_series.index] = True
+        presence_series = pd.Series(index=df.index, data=(True for _ in df.index))
         na_rows = df[df.isnull().any(axis=1)]
 
         # indicate missing values as a tuple indicating presence for each cell
         for na_row_idx, na_row in na_rows.iterrows():
-            presence_series.set_value(na_row_idx, tuple(na_row.isnull()))
+            presence_series.loc[na_row_idx] = tuple(na_row.isnull())
     return presence_series
 
 
