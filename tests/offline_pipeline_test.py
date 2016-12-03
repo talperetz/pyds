@@ -53,8 +53,8 @@ class PipelineTestCase(unittest.TestCase):
                         test_path = os.path.join(subdir, file)
             if train_path:
                 self.logger.debug('train_set: %s \n test_set: %s' % (train_path, test_path))
-                pipeline_results = pipeline.exec_pipeline(train_paths=train_path, test_paths=test_path,
-                                                          target_column='target')
+                pipeline_results = pipeline.exec_offline_pipeline(train_paths=train_path, test_paths=test_path,
+                                                                  target_column='target')
                 try:
                     self.assert_ingestion(pipeline_results)
                     self.assert_exploration(pipeline_results)

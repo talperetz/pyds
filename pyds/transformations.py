@@ -24,7 +24,7 @@ def _pct_rank_qcut(series, n, edges=None):
 
 
 def _encode_categorical_columns(encode_df, expand_fit_df=None, col_to_encoder=None):
-    if expand_fit_df:
+    if expand_fit_df is not None:
         assert set(encode_df.columns).issubset(expand_fit_df.columns)
         expand_fit_df = pd.concat([encode_df, expand_fit_df], ignore_index=True)
     else:
@@ -36,6 +36,7 @@ def _encode_categorical_columns(encode_df, expand_fit_df=None, col_to_encoder=No
             lambda col: col_to_encoder[col.name].fit(col.sort_values()))
     label_encoded_df = encode_df.apply(
         lambda col: col_to_encoder[col.name].transform(col.sort_values().values))
+
     label_encoded_df.columns = ['ordered_%s' % col for col in label_encoded_df.columns]
     return label_encoded_df, col_to_encoder
 
@@ -70,7 +71,7 @@ def _discretize(numerical_df, col_to_width_edges=None, col_to_depth_edges=None):
     for col_name, col in numerical_df.iteritems():
         num_of_bins = _calc_optimal_num_of_bins(col)
         if is_edges_recieved and (col_name in col_to_width_edges.keys()) and (col_name in col_to_depth_edges.keys()):
-            equal_width_col = pd.cut(col, bins=col_to_width_edges[col_name])
+            equal_width_col = pd.cut(col, bins=col_to_width_edges[col_name], labels=False)
             equal_width_col.name = 'equal_w_%s' % col_name
             equal_width_num_df.loc[:, equal_width_col.name] = equal_width_col
             equal_depth_col, _ = _pct_rank_qcut(col, num_of_bins, edges=col_to_depth_edges[col_name])
@@ -102,30 +103,32 @@ def preprocess_train_columns(X_train, pipeline_results, col_to_scaler=defaultdic
     categorical_cols = list(
         set(pipeline_results.ingestion_results.categorical_cols).intersection(X_train.columns.tolist()))
     is_numerical = len(numerical_cols) > 0
+    is_categorical = len(categorical_cols) > 0
+    label_encoded_df, dummiefied_categorical_df, scaled_numerical_df, col_to_encoder = pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), {}
+
+    updated_categorical_cols = categorical_cols
+    if is_categorical:
+        categorical_df = X_train.loc[:, categorical_cols]
+        if X_test is not None:
+            assert set(categorical_df.columns).issubset(X_test.columns)
+            label_encoded_df, dummiefied_categorical_df, col_to_encoder = \
+                _transform_categorical_columns(categorical_df, test_categorical_df=X_test.loc[:, categorical_cols])
+        else:
+            label_encoded_df, dummiefied_categorical_df, col_to_encoder = _transform_categorical_columns(categorical_df)
+        updated_categorical_cols = categorical_df.columns.tolist() + dummiefied_categorical_df.columns.tolist()
 
     # discretization of numerical columns
     if is_numerical:
         numerical_df = X_train.loc[:, numerical_cols]
         equal_width_num_df, col_to_width_edges, equal_depth_num_df, col_to_depth_edges = _discretize(numerical_df)
-
-    # add the discretized columns to categorical columns
-    categorical_df = pd.concat(
-        [df for df in [X_train.loc[:, categorical_cols], equal_width_num_df, equal_depth_num_df] if df is not None],
-        axis=1) if is_numerical else X_train.loc[:, categorical_cols]
-    if X_test:
-        assert set(categorical_df.columns).issubset(X_test.columns)
-        label_encoded_df, dummiefied_categorical_df, col_to_encoder = \
-            _transform_categorical_columns(categorical_df, X_test.loc[:, categorical_cols])
-    else:
-        label_encoded_df, dummiefied_categorical_df, col_to_encoder = _transform_categorical_columns(categorical_df)
-
-    # add the encoded categorical columns to numerical columns
-    numerical_df = pd.concat([X_train.loc[:, numerical_cols], label_encoded_df], axis=1)
-    updated_categorical_cols = categorical_df.columns.tolist() + dummiefied_categorical_df.columns.tolist()
-    scaled_numerical_df, col_to_scaler = _transform_numerical_columns(numerical_df, col_to_scaler)
+        label_encoded_df = pd.concat([label_encoded_df, equal_width_num_df, equal_depth_num_df], axis=1)
+        # add the encoded categorical columns to numerical columns
+        numerical_df = pd.concat([X_train.loc[:, numerical_cols], label_encoded_df], axis=1)
+        updated_numerical_cols = numerical_df.columns.tolist()
+        scaled_numerical_df, col_to_scaler = _transform_numerical_columns(numerical_df, col_to_scaler)
     transformed_df = pd.concat([scaled_numerical_df, dummiefied_categorical_df], axis=1)
     return transformed_df, [col_to_scaler], [
-        col_to_encoder], numerical_cols, updated_categorical_cols, col_to_width_edges, col_to_depth_edges
+        col_to_encoder], updated_numerical_cols, updated_categorical_cols, col_to_width_edges, col_to_depth_edges
 
 
 def transform_test_columns(X_test, pipeline_results):
@@ -139,26 +142,25 @@ def transform_test_columns(X_test, pipeline_results):
     categorical_cols = list(
         set(pipeline_results.ingestion_results.categorical_cols).intersection(X_test.columns.tolist()))
     is_numerical = len(numerical_cols) > 0
+    is_categorical = len(categorical_cols) > 0
+    label_encoded_df, dummiefied_categorical_df, scaled_numerical_df, col_to_encoder = pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), {}
+
+    if is_categorical:
+        categorical_df = X_test.loc[:, categorical_cols]
+        cat_transformations = pipeline_results.transformations_results.cat_transformations
+        label_encoded_df, dummiefied_categorical_df, col_to_encoder = \
+            _transform_categorical_columns(categorical_df, col_to_encoder=cat_transformations[0])
 
     # discretization of numerical columns
     if is_numerical:
+        num_transformations = pipeline_results.transformations_results.num_transformations
         numerical_df = X_test.loc[:, numerical_cols]
         equal_width_num_df, _, equal_depth_num_df, _ = _discretize(numerical_df,
                                                                    col_to_width_edges=pipeline_results.transformations_results.col_to_width_edges,
                                                                    col_to_depth_edges=pipeline_results.transformations_results.col_to_depth_edges)
-
-    # add the discretized columns to categorical columns
-    categorical_df = pd.concat(
-        [df for df in [X_test.loc[:, categorical_cols], equal_width_num_df, equal_depth_num_df] if df is not None],
-        axis=1) if is_numerical else X_test.loc[:, categorical_cols]
-    num_transformations = pipeline_results.transformations_results.num_transformations
-    cat_transformations = pipeline_results.transformations_results.cat_transformations
-    label_encoded_df, dummiefied_categorical_df, col_to_encoder = \
-        _transform_categorical_columns(categorical_df, col_to_encoder=cat_transformations[0])
-
-    # add the encoded categorical columns to numerical columns
-    numerical_df = pd.concat([X_test.loc[:, numerical_cols], label_encoded_df], axis=1)
-    scaled_numerical_df, scaler = _transform_numerical_columns(numerical_df, col_to_scaler=num_transformations[0])
+        # add the encoded categorical columns to numerical columns
+        numerical_df = pd.concat([X_test.loc[:, numerical_cols], label_encoded_df], axis=1)
+        scaled_numerical_df, scaler = _transform_numerical_columns(numerical_df, col_to_scaler=num_transformations[0])
     transformed_df = pd.concat([scaled_numerical_df, dummiefied_categorical_df], axis=1)
     return transformed_df
 

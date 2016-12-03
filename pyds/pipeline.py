@@ -97,7 +97,8 @@ class PipelineResults:
         self.Ingestion.numerical_cols = new_num_cols
 
 
-def exec_pipeline(train_paths, test_paths=None, target_column=None, columns_to_clusterize=None, n_clusters=None):
+def exec_offline_pipeline(train_paths, test_paths=None, target_column=None, columns_to_clusterize=None,
+                          n_clusters=None):
     """
     given data and arguments describing the data
     this function runs a full pipeline and returns it's result in a PipelineResults object
@@ -154,10 +155,17 @@ def exec_pipeline(train_paths, test_paths=None, target_column=None, columns_to_c
     logger.info('removed %s outliers on train set' % len(outliers))
     ml_ready_y_train = y_train.drop(outliers, axis=0)
     pipeline_results.save_cleaning_results(na_rows, imputation, outliers)
+    # clean X_test as X_train
+    X_test_cols_to_drop = list(set(id_columns).intersection(X_test.columns.tolist()))
+    if X_test_cols_to_drop:
+        X_test.drop(X_test_cols_to_drop, axis=1, inplace=True)
+    filled_X_test = X_test
+    if X_test.isnull().values.any():
+        filled_X_test = cleaning.fill_missing_values(X_test, pipeline_results)[0]
 
     # preprocessing
     transformed_X_train, num_transformations, cat_transformations, updated_num_cols, updated_cat_cols, col_to_width_edges, col_to_depth_edges = transformations.preprocess_train_columns(
-        cleaned_X_train, pipeline_results)
+        X_train=cleaned_X_train, pipeline_results=pipeline_results, X_test=filled_X_test)
     logger.info('categorical and numerical columns transformed')
     pipeline_results.save_transformations(num_transformations, cat_transformations, updated_num_cols, updated_cat_cols,
                                           col_to_width_edges, col_to_depth_edges)
@@ -175,12 +183,6 @@ def exec_pipeline(train_paths, test_paths=None, target_column=None, columns_to_c
     pipeline_results.save_features(created_features, selected_features)
 
     # transform X_test as X_train
-    X_test_cols_to_drop = list(set(id_columns).intersection(X_test.columns.tolist()))
-    if X_test_cols_to_drop:
-        X_test.drop(X_test_cols_to_drop, axis=1, inplace=True)
-    filled_X_test = X_test
-    if X_test.isnull().values.any():
-        filled_X_test = cleaning.fill_missing_values(X_test, pipeline_results)[0]
     transformed_X_test = transformations.transform_test_columns(filled_X_test, pipeline_results)
     X_test_with_new_features, _ = features_engineering.create_features(transformed_X_test,
                                                                        y_test,
