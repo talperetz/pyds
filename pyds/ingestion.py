@@ -96,24 +96,40 @@ def get_train_test_splits(train_df, test_paths, target_column):
     return X_train, X_test, y_train, y_test, is_supervised
 
 
-def infer_columns_statistical_types(X, y=None):
+def infer_columns_statistical_types(X, y=None, col_to_type=None):
     """
     given a pandas DataFrame returns a lists of the dataframe's numerical columns, categorical columns, id columns
+    :param col_to_type: dict of column name to type ['numerical', 'categorical', 'id'] for manually setting columns types
     :param y: [pandas Series] target column
     :param X: [pandas DataFrame] predictor columns
     :return: lists of the dataframe's numerical columns, categorical columns, id columns
     """
+    numerical_cols, categorical_cols, id_cols = [], [], []
     df = X.copy()
     if y is not None:
         df[y.name] = y
+
+    # manually set columns types
+    if col_to_type:
+        for col_name, col_type in col_to_type.iteritems():
+            assert col_name in df.columns
+            if col_type == 'numerical':
+                numerical_cols.append(col_name)
+            elif col_type == 'categorical':
+                categorical_cols.append(col_name)
+            elif col_type == 'id':
+                id_cols.append(col_name)
+            else:
+                raise TypeError('supported types are numerical / categorical')
+                df.drop(col_name, axis=1, inplace=True)
     unique_df = df.apply(pd.Series.nunique)
     dist_ratios = unique_df / df.apply(pd.Series.count)
-    id_cols = dist_ratios.where(dist_ratios == 1).dropna().index.tolist()
+    id_cols += dist_ratios.where(dist_ratios == 1).dropna().index.tolist()
     suspected_numerical_cols = set(df.select_dtypes(include=constants.NUMERIC_TYPES).columns).difference(id_cols)
-    numerical_cols = list(
+    numerical_cols += list(
         set(unique_df.where(unique_df > constants.CATEGORICAL_THRESHOLD).dropna().index.tolist()).intersection(
             suspected_numerical_cols))
-    categorical_cols = list(set(df.columns.difference(numerical_cols).drop(id_cols).tolist()))
+    categorical_cols += list(set(df.columns.difference(numerical_cols).drop(id_cols).tolist()))
     cols_to_convert_to_categorical = list(suspected_numerical_cols.difference(numerical_cols))
     return numerical_cols, categorical_cols, id_cols, cols_to_convert_to_categorical
 
