@@ -1,3 +1,4 @@
+hyperopt
 pyqt5
 pandas
 matplotlib

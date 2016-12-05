@@ -8,6 +8,7 @@
 from collections import defaultdict, Counter
 
 import pandas as pd
+from hyperopt import fmin, tpe, hp
 from orangecontrib.associate.fpgrowth import association_rules, frequent_itemsets, rules_stats
 from sklearn import metrics
 from sklearn.cluster import KMeans, SpectralClustering, MiniBatchKMeans, DBSCAN, AffinityPropagation
@@ -61,7 +62,7 @@ class MLModel:
         self.X = X_train
         self.y = y_train
         self.scoring = scoring
-        self.best_params = fmin(self._hyperopt_function, hp.choice(self.param_space),
+        self.best_params = fmin(self._hyperopt_function, self.param_space,
                                 algo=tpe.suggest, max_evals=max_evals)
         self.best_score = self._hyperopt_function(self.best_params)
         self.implementation = self.implementation(self.best_params)
@@ -135,7 +136,7 @@ def classify(X_train, X_test, y_train, scoring='accuracy'):
     return best_model, best_model.predict(X_test), best_model.best_score
 
 
-def regress(X_train, X_test, y_train, scoring='accuracy'):
+def regress(X_train, X_test, y_train, scoring='neg_mean_squared_error'):
     """
     given the train and test set with their labels returns the best_classifier according to the metric,
     it's predictions on the test set and it's metric score.
@@ -151,6 +152,8 @@ def regress(X_train, X_test, y_train, scoring='accuracy'):
     """
     # models configurations
     sgd = MLModel('SGDRegressor', SGDRegressor, {
+        'loss': hp.choice('loss', ['squared_loss', 'huber']),
+        'penalty': hp.choice('penalty ', ['none', 'l2', 'l1', 'elasticnet'])
     })
     lasso = MLModel('Lasso', Lasso, {
     })
