@@ -192,13 +192,11 @@ def exec_offline_pipeline(train_paths, test_paths=None, target_column=None, colu
     if is_supervised:
         # classification problem
         if target_column in pipeline_results.ingestion_results.categorical_cols:
-            best_model, predictions_df, score = ml.classify(ml_ready_X_train, ml_ready_X_test, ml_ready_y_train,
-                                                            y_test)
+            best_model, predictions_df, score = ml.classify(ml_ready_X_train, ml_ready_X_test, ml_ready_y_train)
             logger.info('finished classification')
         # regression problem
         else:
-            best_model, predictions_df, score = ml.regress(ml_ready_X_train, ml_ready_X_test, ml_ready_y_train,
-                                                           y_test)
+            best_model, predictions_df, score = ml.regress(ml_ready_X_train, ml_ready_X_test, ml_ready_y_train)
             logger.info('finished regression')
     # unsupervised problem
     else:
