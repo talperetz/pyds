@@ -83,6 +83,7 @@ def classify(X_train, X_test, y_train, scoring='accuracy'):
     classification is the problem of identifying to which of a set of categories (sub-populations) a new observation
     belongs, on the basis of a training set of data containing observations (or instances) whose category membership
     is known.
+    :param scoring: model evaluation definition (from http://scikit-learn.org/stable/modules/model_evaluation.html)
     :param X_train: training dataframe
     :param y_train: training true labels (target var)
     :param X_test: test dataframe
@@ -141,6 +142,7 @@ def regress(X_train, X_test, y_train, scoring='accuracy'):
     regression analysis is a statistical process for estimating the relationships among variables.
     It includes many techniques for modeling and analyzing several variables, when the focus is on the relationship
     between a dependent variable and one or more independent variables
+    :param scoring: model evaluation definition (from http://scikit-learn.org/stable/modules/model_evaluation.html)
     :param X_train: training dataframe
     :param y_train: training true labels (target var)
     :param X_test: test dataframe
