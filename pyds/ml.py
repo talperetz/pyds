@@ -17,10 +17,10 @@ from sklearn.ensemble import GradientBoostingRegressor
 from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier, IsolationForest
 from sklearn.ensemble.forest import RandomForestRegressor
 from sklearn.gaussian_process import GaussianProcessClassifier
-from sklearn.gaussian_process.kernels import RBF
 from sklearn.linear_model import SGDRegressor, Lasso, ElasticNet, Ridge
 from sklearn.manifold import Isomap, SpectralEmbedding, LocallyLinearEmbedding
 from sklearn.mixture import GaussianMixture
+from sklearn.model_selection import cross_val_score
 from sklearn.naive_bayes import GaussianNB
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.neural_network import MLPClassifier
@@ -31,87 +31,145 @@ from sklearn.tree import DecisionTreeClassifier
 from pyds import constants
 
 
-def classify(X_train, X_test, y_train, y_test):
+class MLModel:
+    """
+    machine learning model object
+    """
+    name, implementation, param_space = (None for _ in range(3))
+    X, y, best_params, best_score, predictions = (None for _ in range(5))
+    scoring = 'accuracy'
+
+    def __init__(self, name, implementation, param_space):
+        self.name = name
+        self.implementation = implementation
+        self.param_space = param_space
+
+    def _hyperopt_function(self, params):
+        model = self.implementation(**params)
+        return cross_val_score(model, self.X, self.y, scoring=self.scoring).mean()
+
+    def optimize(self, X_train, y_train, scoring, max_evals=500):
+        """
+        given a loss function find the params [in the param_space] that minimize it
+        and update the best_params, best_score and implementation to use best_params
+        :param y_train:
+        :param X_train:
+        :param scoring: string that controls what metric would the model use for evaluation
+        :param max_evals: limit to the num of evaluation
+        :param loss_func: function to minimize (for maximization negate function)
+        """
+        self.X = X_train
+        self.y = y_train
+        self.scoring = scoring
+        self.best_params = fmin(self._hyperopt_function, hp.choice(self.param_space),
+                                algo=tpe.suggest, max_evals=max_evals)
+        self.best_score = self._hyperopt_function(self.best_params)
+        self.implementation = self.implementation(self.best_params)
+        return self
+
+    def predict(self, X_test):
+        """
+        given a pandas dataframe returns the model's predictions as np.array
+        :param X_test: test dataframe
+        :return: predictions as np.array
+        """
+        return self.implementation.predict(X_test)
+
+
+def classify(X_train, X_test, y_train, scoring='accuracy'):
     """
     given the train and test set with their labels returns the best_classifier according to the metric,
     it's predictions on the test set and it's metric score.
-
     classification is the problem of identifying to which of a set of categories (sub-populations) a new observation
     belongs, on the basis of a training set of data containing observations (or instances) whose category membership
     is known.
-
     :param X_train: training dataframe
     :param y_train: training true labels (target var)
     :param X_test: test dataframe
     :param y_test: test true labels (target var)
     :return: the best_classifier according to the metric, it's predictions on the test set and it's metric score
     """
-    classifiers_names = ["Nearest Neighbors", "Linear SVM", "RBF SVM", "Gaussian Process",
-                         "Decision Tree", "Random Forest", "Neural Net", "AdaBoost",
-                         "Naive Bayes", "QDA"]
+    # models configurations
+    knn = MLModel('KNeighborsClassifier', KNeighborsClassifier, {
+        'n_neighbors': hp.choice('n_neighbors', range(1, 50)),
+        'scale': hp.choice('scale', [0, 1]),
+        'normalize': hp.choice('normalize', [0, 1])
+    })
+    svc = MLModel('SVC', SVC, {
+        'C': hp.uniform('C', 0, 20),
+        'kernel': hp.choice('kernel', ['linear', 'sigmoid', 'poly', 'rbf']),
+        'gamma': hp.uniform('gamma', 0, 20),
+        'scale': hp.choice('scale', [0, 1]),
+        'normalize': hp.choice('normalize', [0, 1])
+    })
+    gp = MLModel('GaussianProcessClassifier', GaussianProcessClassifier, {
+        'warm_start': hp.choice('warm_start', [True, False])
+    })
+    rf = MLModel('RandomForestClassifier', RandomForestClassifier, {
+        'max_depth': hp.choice('max_depth', range(1, 20)),
+        'max_features': hp.choice('max_features', range(1, 5)),
+        'n_estimators': hp.choice('n_estimators', range(1, 20)),
+        'criterion': hp.choice('criterion', ["gini", "entropy"]),
+        'scale': hp.choice('scale', [0, 1]),
+        'normalize': hp.choice('normalize', [0, 1])
+    })
+    tree = MLModel('DecisionTreeClassifier', DecisionTreeClassifier, {
+    })
+    mlp = MLModel('MLPClassifier', MLPClassifier, {
+        'alpha': hp.choice('alpha', range(0, 10))
+    })
+    ada = MLModel('AdaBoostClassifier', AdaBoostClassifier, {
+    })
+    gnb = MLModel('GaussianNB', GaussianNB, {
+    })
+    qda = MLModel('QuadraticDiscriminantAnalysis', QuadraticDiscriminantAnalysis, {
+    })
 
-    classifiers = [
-        KNeighborsClassifier(3),
-        SVC(kernel="linear", C=0.025),
-        SVC(gamma=2, C=1),
-        GaussianProcessClassifier(1.0 * RBF(1.0), warm_start=True),
-        DecisionTreeClassifier(max_depth=5),
-        RandomForestClassifier(max_depth=5, n_estimators=10, max_features=1),
-        MLPClassifier(alpha=1),
-        AdaBoostClassifier(),
-        GaussianNB(),
-        QuadraticDiscriminantAnalysis()]
-
-    clf_to_score = dict()
-    # iterate over classifiers
-    for name, clf in zip(classifiers_names, classifiers):
-        clf.fit(X_train, y_train)
-        clf_to_score[clf] = clf.score(X_test, y_test)
-
-    best_clf = max(clf_to_score, key=clf_to_score.get)
-    return best_clf, best_clf.predict(X_test), clf_to_score[best_clf]
+    # models competition
+    competing_models = [knn, svc, gp, tree, rf, mlp, ada, gnb, qda]
+    model_to_best_score = {model: model.optimize(X_train=X_train, y_train=y_train, scoring=scoring).best_score for model
+                           in
+                           competing_models}
+    best_model = max(model_to_best_score, key=model_to_best_score.get)
+    return best_model, best_model.predict(X_test), best_model.best_score
 
 
-def regress(X_train, X_test, y_train, y_test):
+def regress(X_train, X_test, y_train, scoring='accuracy'):
     """
     given the train and test set with their labels returns the best_classifier according to the metric,
     it's predictions on the test set and it's metric score.
-
     regression analysis is a statistical process for estimating the relationships among variables.
     It includes many techniques for modeling and analyzing several variables, when the focus is on the relationship
     between a dependent variable and one or more independent variables
-
     :param X_train: training dataframe
     :param y_train: training true labels (target var)
     :param X_test: test dataframe
     :param y_test: test true labels (target var)
     :return: the best_regressor according to the metric, it's predictions on the test set and it's metric score
     """
-    regressors_names, regressors, regressor_to_score = set(), set(), dict()
-    if len(X_train.index) > 100000:
-        sgd = SGDRegressor(alpha=0.0001, average=False, epsilon=0.1, eta0=0.01,
-                           fit_intercept=True, l1_ratio=0.15, learning_rate='invscaling',
-                           loss='squared_loss', n_iter=5, penalty='l2', power_t=0.25,
-                           random_state=None, shuffle=True, verbose=0, warm_start=False).fit(X_train, y_train)
-        regressors_names.add("SGDRegressor")
-        regressors.add(sgd)
-    else:
-        lasso = Lasso(alpha=0.1).fit(X_train, y_train)
-        enet = ElasticNet().fit(X_train, y_train)
-        ridge = Ridge().fit(X_train, y_train)
-        linear_svr = SVR(kernel='linear').fit(X_train, y_train)
-        rbf_svr = SVR(kernel='rbf').fit(X_train, y_train)
-        gbr = GradientBoostingRegressor(n_estimators=100, learning_rate=0.1,
-                                        max_depth=1, random_state=0, loss='ls').fit(X_train, y_train)
-        rf_regressor = RandomForestRegressor().fit(X_train, y_train)
-        regressors_names.update(["Lasso", "ElasticNet", "Ridge", "linear SVR", "rbf SVR", "GradientBoostingRegressor",
-                                 "RandomForestRegressor"])
-        regressors.update([lasso, enet, ridge, linear_svr, rbf_svr, gbr, rf_regressor])
-    for regressor in regressors:
-        regressor_to_score[regressor] = regressor.score(X_test, y_test)
+    # models configurations
+    sgd = MLModel('SGDRegressor', SGDRegressor, {
+    })
+    lasso = MLModel('Lasso', Lasso, {
+    })
+    enet = MLModel('ElasticNet', ElasticNet, {
+    })
+    ridge = MLModel('Ridge', Ridge, {
+    })
+    svr = MLModel('SVR', SVR, {
+        'kernel': hp.choice('kernel', ['linear', 'rbf']),
+    })
+    gbr = MLModel('GradientBoostingRegressor', GradientBoostingRegressor, {
+    })
+    rf_regressor = MLModel('RandomForestRegressor', RandomForestRegressor, {
+    })
 
-    best_regressor = max(regressor_to_score, key=regressor_to_score.get)
-    return best_regressor, best_regressor.predict(X_test), regressor_to_score[best_regressor]
+    # models competition
+    competing_models = [sgd, lasso, enet, ridge, svr, gbr, rf_regressor]
+    model_to_best_score = {model: model.optimize(X_train=X_train, y_train=y_train, scoring=scoring).best_score for model
+                           in competing_models}
+    best_model = max(model_to_best_score, key=model_to_best_score.get)
+    return best_model, best_model.predict(X_test), best_model.best_score
 
 
 def _analyze_clusters(X, labels_pred, algorithm_name, labels_true=None):
