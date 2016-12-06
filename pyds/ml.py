@@ -5,6 +5,7 @@
 :Links: https://www.analyticsvidhya.com/blog/2015/01/scikit-learn-python-machine-learning-tool/
 """
 
+import math
 from collections import defaultdict, Counter
 
 import pandas as pd
@@ -92,39 +93,46 @@ def classify(X_train, X_test, y_train, scoring='accuracy'):
     :return: the best_classifier according to the metric, it's predictions on the test set and it's metric score
     """
     # models configurations
-    knn = MLModel('KNeighborsClassifier', KNeighborsClassifier, {
+    num_of_features = len(X_train.columns)
+    knn = MLModel('KNeighborsClassifier', KNeighborsClassifier, param_space={
         'n_neighbors': hp.choice('n_neighbors', range(1, 50)),
-        'scale': hp.choice('scale', [0, 1]),
-        'normalize': hp.choice('normalize', [0, 1])
+        'weights': hp.choice('weights', ['uniform', 'distance']),
+        'leaf_size': hp.choice('leaf_size', range(1, 50)),
     })
-    svc = MLModel('SVC', SVC, {
+    svc = MLModel('SVC', SVC, param_space={
         'C': hp.uniform('C', 0, 20),
         'kernel': hp.choice('kernel', ['linear', 'sigmoid', 'poly', 'rbf']),
         'gamma': hp.uniform('gamma', 0, 20),
-        'scale': hp.choice('scale', [0, 1]),
-        'normalize': hp.choice('normalize', [0, 1])
+        'degree': hp.choice('degree', range(1, 5))
     })
-    gp = MLModel('GaussianProcessClassifier', GaussianProcessClassifier, {
+    gp = MLModel('GaussianProcessClassifier', GaussianProcessClassifier, param_space={
         'warm_start': hp.choice('warm_start', [True, False])
     })
-    rf = MLModel('RandomForestClassifier', RandomForestClassifier, {
+    rf = MLModel('RandomForestClassifier', RandomForestClassifier, param_space={
         'max_depth': hp.choice('max_depth', range(1, 20)),
-        'max_features': hp.choice('max_features', range(1, 5)),
-        'n_estimators': hp.choice('n_estimators', range(1, 20)),
-        'criterion': hp.choice('criterion', ["gini", "entropy"]),
-        'scale': hp.choice('scale', [0, 1]),
-        'normalize': hp.choice('normalize', [0, 1])
+        'max_features': hp.choice('max_features', [int(math.sqrt(num_of_features) / 2.0),
+                                                   int(math.sqrt(num_of_features)),
+                                                   int(2 * math.sqrt(num_of_features))]),
+        'n_estimators': hp.choice('n_estimators', [100, 500, 1000, 2000]),
+        'criterion': hp.choice('criterion', ["gini", "entropy"])
     })
-    tree = MLModel('DecisionTreeClassifier', DecisionTreeClassifier, {
+    tree = MLModel('DecisionTreeClassifier', DecisionTreeClassifier, param_space={
+        'max_depth': hp.choice('max_depth', range(3, 5)),
+        'min_samples_split': hp.choice('min_samples_split', [10, 50]),
+        'min_samples_leaf': hp.choice('min_samples_leaf', [1, 5, 10])
     })
-    mlp = MLModel('MLPClassifier', MLPClassifier, {
-        'alpha': hp.choice('alpha', range(0, 10))
+    mlp = MLModel('MLPClassifier', MLPClassifier, param_space={
+        'hidden_layer_sizes': hp.choice('hidden_layer_sizes', [50, 100, 500]),
+        'alpha': hp.choice('alpha', hp.choice[0.0001, 0.1])
     })
-    ada = MLModel('AdaBoostClassifier', AdaBoostClassifier, {
+    ada = MLModel('AdaBoostClassifier', AdaBoostClassifier, param_space={
+        'n_estimators': hp.choice('n_estimators', [100, 500, 1000])
     })
-    gnb = MLModel('GaussianNB', GaussianNB, {
+    gnb = MLModel('GaussianNB', GaussianNB, param_space={
+        'priors': None
     })
-    qda = MLModel('QuadraticDiscriminantAnalysis', QuadraticDiscriminantAnalysis, {
+    qda = MLModel('QuadraticDiscriminantAnalysis', QuadraticDiscriminantAnalysis, param_space={
+        'priors': None
     })
 
     # models competition
@@ -151,22 +159,39 @@ def regress(X_train, X_test, y_train, scoring='neg_mean_squared_error'):
     :return: the best_regressor according to the metric, it's predictions on the test set and it's metric score
     """
     # models configurations
+    num_of_features = len(X_train.columns)
     sgd = MLModel('SGDRegressor', SGDRegressor, {
         'loss': hp.choice('loss', ['squared_loss', 'huber']),
-        'penalty': hp.choice('penalty ', ['none', 'l2', 'l1', 'elasticnet'])
+        'penalty': hp.choice('penalty ', ['none', 'l2', 'l1', 'elasticnet']),
+        'warm_start': hp.choice('warm_start', [False, True])
     })
     lasso = MLModel('Lasso', Lasso, {
+        'alpha': hp.choice('alpha', hp.uniform(0.2, 2.5))
     })
     enet = MLModel('ElasticNet', ElasticNet, {
+        'alpha': hp.choice('alpha', hp.uniform(0.2, 2.5)),
+        'normalize': hp.choice('normalize', hp.choice([False, True]))
     })
     ridge = MLModel('Ridge', Ridge, {
+        'alpha': hp.choice('alpha', hp.uniform(0.2, 2.5)),
+        'normalize': hp.choice('normalize', hp.choice([False, True]))
     })
     svr = MLModel('SVR', SVR, {
-        'kernel': hp.choice('kernel', ['linear', 'rbf']),
+        'C': hp.uniform('C', 0, 20),
+        'kernel': hp.choice('kernel', ['linear', 'sigmoid', 'poly', 'rbf']),
+        'gamma': hp.uniform('gamma', 0, 20),
+        'degree': hp.choice('degree', range(1, 5))
     })
     gbr = MLModel('GradientBoostingRegressor', GradientBoostingRegressor, {
+        'n_estimators': hp.choice('n_estimators', [100, 500, 1000, 2000])
     })
     rf_regressor = MLModel('RandomForestRegressor', RandomForestRegressor, {
+        'max_depth': hp.choice('max_depth', range(1, 20)),
+        'max_features': hp.choice('max_features', [int(math.sqrt(num_of_features) / 2.0),
+                                                   int(math.sqrt(num_of_features)),
+                                                   int(2 * math.sqrt(num_of_features))]),
+        'n_estimators': hp.choice('n_estimators', [100, 500, 1000, 2000]),
+        'criterion': hp.choice('criterion', ["gini", "entropy"])
     })
 
     # models competition
