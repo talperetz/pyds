@@ -8,8 +8,9 @@
 
 import os
 import unittest
-
+import pandas as pd
 from pyds import cleaning, constants
+from tests import data_generators
 
 
 class PipelineTestCase(unittest.TestCase):
@@ -37,10 +38,11 @@ class PipelineTestCase(unittest.TestCase):
             warnings.showwarning = warn_with_traceback
 
     def test_remove_id_columns(self):
-        # todo: generate dataframe with id columns
-        cleaning.remove_id_columns()
-        # todo: check that the dataframe returns without id columns
-        pass
+        gen_df = data_generators.generate_random_data(100, 15)
+        id_df = data_generators.generate_id_cols(100, 6)
+        gen_df_with_id_columns = pd.concat([gen_df, id_df], axis=1)
+        gen_df_without_id_cols = cleaning.remove_id_columns(gen_df_with_id_columns)
+        self.assertEqual(gen_df.columns, gen_df_without_id_cols.columns)
 
     def test_fill_missing_values(self):
         # todo: generate dataframes with missing values

@@ -124,7 +124,7 @@ def infer_columns_statistical_types(X, y=None, col_to_type=None):
                 df.drop(col_name, axis=1, inplace=True)
     unique_df = df.apply(pd.Series.nunique)
     dist_ratios = unique_df / df.apply(pd.Series.count)
-    id_cols += dist_ratios.where(dist_ratios == 1).dropna().index.tolist()
+    id_cols += dist_ratios.where(dist_ratios == constants.ID_COLUMN_DIST_RATIO_THRESHOLD).dropna().index.tolist()
     suspected_numerical_cols = set(df.select_dtypes(include=constants.NUMERIC_TYPES).columns).difference(id_cols)
     numerical_cols += list(
         set(unique_df.where(unique_df > constants.CATEGORICAL_THRESHOLD).dropna().index.tolist()).intersection(
