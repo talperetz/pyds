@@ -29,6 +29,7 @@ class PipelineTestCase(unittest.TestCase):
 
         def warn_with_traceback(message, category, filename, lineno, file=None, line=None):
             traceback.print_stack()
+
             log = file if hasattr(file, 'write') else sys.stderr
             log.write(warnings.formatwarning(message, category, filename, lineno, line))
 
@@ -49,6 +50,7 @@ class PipelineTestCase(unittest.TestCase):
                 if (file is not None) and (not file.endswith('.py')):
                     if 'train' in file:
                         train_path = os.path.join(subdir, file)
+
                     elif 'test' in file:
                         test_path = os.path.join(subdir, file)
             if train_path:

@@ -13,12 +13,11 @@ from pyds import ml
 
 def describe(X, pipeline_results, y=None, **kwargs):
     """
-    given a pandas pandas DataFrame returns a pandas pandas DataFrame describing basic statistics about numeric columns,
-    dropping id-columns
+    given a pandas pandas DataFrame returns a pandas DataFrame describing basic statistics about numeric columns
     :param y: [pandas Series] target column
     :param pipeline_results: class: 'PipelineResults'
     :param X: [pandas DataFrame] predictor columns
-    :return: pandas pandas DataFrame describing basic statistics about numeric columns
+    :return: pandas DataFrame describing basic statistics about numeric columns
     """
     df = X.copy()
     numerical_cols = pipeline_results.ingestion_results.numerical_cols

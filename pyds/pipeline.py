@@ -176,7 +176,7 @@ def exec_offline_pipeline(train_paths, test_paths=None, target_column=None, colu
     pipeline_results.save_features(created_features, selected_features)
 
     # transform X_test as X_train
-    transformed_X_test = transformations.transform_test_columns(filled_X_test, pipeline_results)
+    transformed_X_test = transformations.preprocess_test_columns(filled_X_test, pipeline_results)
     X_test_with_new_features, _ = features_engineering.create_features(transformed_X_test,
                                                                        y_test,
                                                                        pipeline_results)
@@ -265,7 +265,7 @@ def low_mem_pipeline(train_paths, test_paths=None, target_column=None, columns_t
     X_test_cols_to_drop = set(id_columns).intersection(X_test.columns.tolist())
     if X_test_cols_to_drop:
         X_test.drop(X_test_cols_to_drop, axis=1, inplace=True)
-    transformed_X_test = transformations.transform_test_columns(X_test, pipeline_results)
+    transformed_X_test = transformations.preprocess_test_columns(X_test, pipeline_results)
     X_test_with_new_features, _ = features_engineering.create_features(transformed_X_test,
                                                                        y_test,
                                                                        pipeline_results)

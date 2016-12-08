@@ -88,7 +88,7 @@ def _transform_numerical_columns(train_numerical_df, col_to_scaler=defaultdict(M
     return transformed_numerical_df, col_to_scaler
 
 
-def _discretize(numerical_df, col_to_width_edges=None, col_to_depth_edges=None):
+def discretize(numerical_df, col_to_width_edges=None, col_to_depth_edges=None):
     """
     given a numerical dataframe returns equal width and equal depth labeled dataframes and their bins dict
     :param numerical_df: pandas DataFrame of numerical attributes
@@ -153,7 +153,7 @@ def preprocess_train_columns(X_train, pipeline_results, col_to_scaler=defaultdic
     # discretization of numerical columns
     if is_numerical:
         numerical_df = X_train.loc[:, numerical_cols]
-        equal_width_num_df, col_to_width_edges, equal_depth_num_df, col_to_depth_edges = _discretize(numerical_df)
+        equal_width_num_df, col_to_width_edges, equal_depth_num_df, col_to_depth_edges = discretize(numerical_df)
         label_encoded_df = pd.concat([label_encoded_df, equal_width_num_df, equal_depth_num_df], axis=1)
         # add the encoded categorical columns to numerical columns
         numerical_df = pd.concat([X_train.loc[:, numerical_cols], label_encoded_df], axis=1)
@@ -164,7 +164,7 @@ def preprocess_train_columns(X_train, pipeline_results, col_to_scaler=defaultdic
         col_to_encoder], updated_numerical_cols, updated_categorical_cols, col_to_width_edges, col_to_depth_edges
 
 
-def transform_test_columns(X_test, pipeline_results):
+def preprocess_test_columns(X_test, pipeline_results):
     """
     given a pandas dataframe this function returns it after passing through the same transformations as the train set
     :param X_test: pandas dataframe where we should apply what we've learned
@@ -188,9 +188,9 @@ def transform_test_columns(X_test, pipeline_results):
     if is_numerical:
         num_transformations = pipeline_results.transformations_results.num_transformations
         numerical_df = X_test.loc[:, numerical_cols]
-        equal_width_num_df, _, equal_depth_num_df, _ = _discretize(numerical_df,
-                                                                   col_to_width_edges=pipeline_results.transformations_results.col_to_width_edges,
-                                                                   col_to_depth_edges=pipeline_results.transformations_results.col_to_depth_edges)
+        equal_width_num_df, _, equal_depth_num_df, _ = discretize(numerical_df,
+                                                                  col_to_width_edges=pipeline_results.transformations_results.col_to_width_edges,
+                                                                  col_to_depth_edges=pipeline_results.transformations_results.col_to_depth_edges)
         # add the encoded categorical columns to numerical columns
         numerical_df = pd.concat([X_test.loc[:, numerical_cols], label_encoded_df], axis=1)
         scaled_numerical_df, scaler = _transform_numerical_columns(numerical_df, col_to_scaler=num_transformations[0])

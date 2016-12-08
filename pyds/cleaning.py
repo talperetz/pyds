@@ -68,7 +68,7 @@ def _knn_imputation(df, pipeline_results):
             knn_regressor = KNeighborsRegressor(n_neighbors=constants.KNN_N_NEIGHBORS, weights='distance')
             knn_classifier = KNeighborsClassifier(n_neighbors=constants.KNN_N_NEIGHBORS, weights='distance')
             neigh = knn_regressor if missed_col in numerical_cols else knn_classifier
-            transformed_test_df = transformations.transform_test_columns(test_df.loc[:, filled_cols], pipeline_results)
+            transformed_test_df = transformations.preprocess_test_columns(test_df.loc[:, filled_cols], pipeline_results)
             train_test_columns = set(transformed_test_df.columns).intersection(X_train.columns)
             neigh.fit(X_train.loc[:, train_test_columns], Y_train)
             filled_df.loc[test_df.index, missed_col] = neigh.predict(transformed_test_df.loc[:, train_test_columns])
