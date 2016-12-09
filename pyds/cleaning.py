@@ -22,13 +22,11 @@ def remove_id_columns(X_train, id_columns):
     :param id_columns: [list] columns to drop
     :return: pandas dataframe without id_columns
     """
-    X_train_without_ids = X_train.copy()
-    if (id_columns is not None) and id_columns:
-        X_train_without_ids = X_train.drop(id_columns, axis=1)
-    return X_train_without_ids
+    assert id_columns is not None
+    return X_train.drop(id_columns, axis=1)
 
 
-def _knn_imputation(df, pipeline_results):
+def _knn_imputation(df):
     """
     given a pandas DataFrame
     returns the dataframe with filled values using K nearest neighbours imputation for each missing value
@@ -36,7 +34,7 @@ def _knn_imputation(df, pipeline_results):
     :param df: pandas DataFrame
     :return: pandas DataFrame without missing values
     """
-    numerical_cols = pipeline_results.ingestion_results.numerical_cols
+    numerical_cols = df.select_dtypes(include=['float', 'int']).columns
     filled_df = df.copy()  # the dataset we are filling and returning in the end
     nan_df = df[df.isnull().any(axis=1)]
     na_idxs_to_fill = set(nan_df.index)
@@ -54,9 +52,8 @@ def _knn_imputation(df, pipeline_results):
         # train set = all rows where the test set's missing columns are filled, in order to learn from
         train_df = df.loc[:, filled_cols].dropna()
         # preprocess dataset -> encode and dummify categorical columns, scale and group numerical data
-        transformed_train_df = \
-            transformations.preprocess_train_columns(train_df, pipeline_results,
-                                                     col_to_scaler=defaultdict(RobustScaler))[0]
+        transformed_train_df, train_transformations = \
+            transformations.preprocess_train_columns(train_df, col_to_scaler=defaultdict(RobustScaler))
 
         for missed_col in missed_cols:
             # scaling before applying KNN so the distance would be meaningful, using robust because the
@@ -68,7 +65,8 @@ def _knn_imputation(df, pipeline_results):
             knn_regressor = KNeighborsRegressor(n_neighbors=constants.KNN_N_NEIGHBORS, weights='distance')
             knn_classifier = KNeighborsClassifier(n_neighbors=constants.KNN_N_NEIGHBORS, weights='distance')
             neigh = knn_regressor if missed_col in numerical_cols else knn_classifier
-            transformed_test_df = transformations.preprocess_test_columns(test_df.loc[:, filled_cols], pipeline_results)
+            transformed_test_df = transformations.preprocess_test_columns(test_df.loc[:, filled_cols],
+                                                                          train_transformations)
             train_test_columns = set(transformed_test_df.columns).intersection(X_train.columns)
             neigh.fit(X_train.loc[:, train_test_columns], Y_train)
             filled_df.loc[test_df.index, missed_col] = neigh.predict(transformed_test_df.loc[:, train_test_columns])
@@ -111,7 +109,7 @@ def _indicate_missing_values(df):
     return presence_series
 
 
-def fill_missing_values(X, pipeline_results, method='knn',
+def fill_missing_values(X, method='knn',
                         drop_above_null_percents=constants.DROP_ABOVE_NULL_THRESHOLD):
     """
     given a pandas DataFrame and imputation method
@@ -133,7 +131,7 @@ def fill_missing_values(X, pipeline_results, method='knn',
     else:
         presence_series = _indicate_missing_values(df)
         if method == 'knn':
-            filled_df = _knn_imputation(df_to_fill, pipeline_results)
+            filled_df = _knn_imputation(df_to_fill)
         else:
             filled_df = _simple_imputation(df_to_fill, method)
         filled_df['presence_series'] = presence_series
@@ -152,7 +150,7 @@ def _get_column_outliers_std(column, m=3):
     return outliers
 
 
-def detect_outliers(X, pipeline_results, y=None, contamination=0.1, method='IsolationForest', m=3,
+def detect_outliers(X, y=None, contamination=0.1, method='hdbscan', m=3,
                     numerical_scaler=defaultdict(MinMaxScaler)):
     """
     given a pandas DataFrame returns dataframe with contamination*num of instances
@@ -166,12 +164,14 @@ def detect_outliers(X, pipeline_results, y=None, contamination=0.1, method='Isol
     :param method:
     :return: outliers indexes
     """
-    transformed_X = transformations.preprocess_train_columns(X, pipeline_results=pipeline_results,
-                                                             col_to_scaler=numerical_scaler)[0]
+    transformed_X = transformations.preprocess_train_columns(X, col_to_scaler=numerical_scaler)[0]
     if method == 'IsolationForest':
-        outliers = ml.detect_anomalies(transformed_X, y=y, contamination=contamination)
-    else:
+        outliers = ml.detect_anomalies_with_isolation_forest(transformed_X, y=y, contamination=contamination)
+    elif method == 'hdbscan':
+        outliers = ml.detect_anomalies_with_hdbscan(transformed_X, y=y, contamination=contamination)
+    elif method == 'std':
         # find columns that are m*std further than the mean
         outliers = list(transformed_X.apply(lambda col: _get_column_outliers_std(col, m=m), axis=1).as_matrix().ravel())
-
+    else:
+        raise ValueError('supporting methods are: IsolationForest, hdbscan, std')
     return outliers

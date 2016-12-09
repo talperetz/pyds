@@ -23,7 +23,7 @@ CATEGORICAL_THRESHOLD = 10  # threshold use to differ categorical variables that
 FIGURE_SIZE = 8  # matplotlib fig_size
 
 # features engineering
-NEG_INF_REPRESENTATION = -10
+NEG_INF_REPRESENTATION = -10  # multiplier for the most extreme value in column to isolate from the rest of the data
 
 # ML
 CLUSTERING_METRICS = ('completeness_score', 'homogeneity_score', 'mutual_info_score', 'adjusted_rand_score')

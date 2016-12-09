@@ -130,8 +130,7 @@ def infer_columns_statistical_types(X, y=None, col_to_type=None):
         set(unique_df.where(unique_df > constants.CATEGORICAL_THRESHOLD).dropna().index.tolist()).intersection(
             suspected_numerical_cols))
     categorical_cols += list(set(df.columns.difference(numerical_cols).drop(id_cols).tolist()))
-    cols_to_convert_to_categorical = list(suspected_numerical_cols.difference(numerical_cols))
-    return numerical_cols, categorical_cols, id_cols, cols_to_convert_to_categorical
+    return numerical_cols, categorical_cols, id_cols
 
 
 def adjust_columns_types(cols_to_convert_cat, X_train, X_test, y_train, y_test):
@@ -146,16 +145,19 @@ def adjust_columns_types(cols_to_convert_cat, X_train, X_test, y_train, y_test):
     :return: adjusted_X_train, adjusted_X_test, adjusted_y_train, adjusted_y_test which are the initial dataframes with
     correct types
     """
-    adjusted_X_train, adjusted_X_test, adjusted_y_train, adjusted_y_test = X_train, X_test, y_train, y_test
-    if (cols_to_convert_cat is not None) and cols_to_convert_cat:
+    adjusted_X_train, adjusted_X_test, adjusted_y_train, adjusted_y_test = \
+        X_train.copy(), X_test.copy(), y_train.copy(), y_test.copy()
+    if cols_to_convert_cat is not None:
 
         # adjust Y dataframes
         if y_train.name in cols_to_convert_cat:
-            adjusted_y_train = y_train.astype(str)
+            adjusted_y_train = y_train.astype('category')
             cols_to_convert_cat.remove(y_train.name)
-            adjusted_y_test = y_test.astype(str)
+            adjusted_y_test = y_test.astype('category')
 
         # adjust X dataframes
-        adjusted_X_train[cols_to_convert_cat] = X_train[cols_to_convert_cat].apply(lambda num_col: num_col.astype(str))
-        adjusted_X_test[cols_to_convert_cat] = X_test[cols_to_convert_cat].apply(lambda num_col: num_col.astype(str))
+        adjusted_X_train[cols_to_convert_cat] = X_train[cols_to_convert_cat].apply(
+            lambda num_col: num_col.astype('category'))
+        adjusted_X_test[cols_to_convert_cat] = X_test[cols_to_convert_cat].apply(
+            lambda num_col: num_col.astype('category'))
     return adjusted_X_train, adjusted_X_test, adjusted_y_train, adjusted_y_test

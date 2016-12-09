@@ -63,14 +63,11 @@ class PipelineResults:
         self.cleaning_results.imputation = imputation
         self.cleaning_results.outliers = outliers
 
-    def save_transformations(self, num_transformations, cat_transformations, numerical_cols, categorical_cols,
-                             col_to_width_edges, col_to_depth_edges):
-        self.transformations_results.num_transformations = num_transformations
-        self.transformations_results.cat_transformations = cat_transformations
-        self.transformations_results.numerical_cols = numerical_cols
-        self.transformations_results.categorical_cols = categorical_cols
-        self.transformations_results.col_to_width_edges = col_to_width_edges
-        self.transformations_results.col_to_depth_edges = col_to_depth_edges
+    def save_transformations(self, train_transformations):
+        self.transformations_results.num_transformations = train_transformations.col_to_scaler
+        self.transformations_results.cat_transformations = train_transformations.col_to_encoder
+        self.transformations_results.col_to_width_edges = train_transformations.col_to_width_edges
+        self.transformations_results.col_to_depth_edges = train_transformations.col_to_depth_edges
 
     def save_features(self, created_features, selected_features):
         self.features_results.created_features = created_features
@@ -115,9 +112,9 @@ def exec_offline_pipeline(train_paths, test_paths=None, target_column=None, colu
     logger.info(
         'split data to train and test sets: \nX_train shape - %s \nX_test shape - %s' % (
             X_train.shape, X_test.shape))
-    numerical_columns, categorical_columns, id_columns, cols_to_convert_cat = \
+    numerical_columns, categorical_columns, id_columns = \
         ingestion.infer_columns_statistical_types(X_train, y_train)
-    X_train, X_test, y_train, y_test = ingestion.adjust_columns_types(cols_to_convert_cat, X_train, X_test, y_train,
+    X_train, X_test, y_train, y_test = ingestion.adjust_columns_types(categorical_columns, X_train, X_test, y_train,
                                                                       y_test)
     logger.info('columns types inferred: \nid - %s \n categorical - %s \n numerical - %s' % (
         id_columns, categorical_columns, numerical_columns))
@@ -125,14 +122,10 @@ def exec_offline_pipeline(train_paths, test_paths=None, target_column=None, colu
                                             id_columns)
 
     # exploration
-    num_description, cat_description = exploration.describe(X=X_train, pipeline_results=pipeline_results, y=y_train)
-    pipeline_results.save_exploration_results(num_description, cat_description,
-                                              exploration.hist(X=X_train, pipeline_results=pipeline_results, y=y_train),
-                                              exploration.box_plot(X=X_train, pipeline_results=pipeline_results,
-                                                                   y=y_train),
-                                              exploration.contingency_table(X=X_train,
-                                                                            pipeline_results=pipeline_results,
-                                                                            y=y_train),
+    num_description, cat_description = exploration.describe(X=X_train, y=y_train)
+    pipeline_results.save_exploration_results(num_description, cat_description, exploration.hist(X=X_train, y=y_train),
+                                              exploration.box_plot(X=X_train, y=y_train),
+                                              exploration.contingency_table(X=X_train, y=y_train),
                                               exploration.correlations(X=X_train, y=y_train))
     logger.info(
         'exploration results are ready: \n numerical columns description - \n%s \n categorical columns description -\n%s'
@@ -141,9 +134,9 @@ def exec_offline_pipeline(train_paths, test_paths=None, target_column=None, colu
     # cleaning
     X_train_without_ids = cleaning.remove_id_columns(X_train, id_columns)
     logger.info('id columns removed')
-    filled_X_train, na_rows, imputation = cleaning.fill_missing_values(X_train_without_ids, pipeline_results)
+    filled_X_train, na_rows, imputation = cleaning.fill_missing_values(X_train_without_ids)
     logger.info('filled %s missing values on train set \n %s' % (len(na_rows.index), imputation.head()))
-    outliers = cleaning.detect_outliers(filled_X_train, pipeline_results, y=y_train)
+    outliers = cleaning.detect_outliers(filled_X_train, y=y_train)
     cleaned_X_train = filled_X_train.drop(outliers, axis=0)
     logger.info('removed %s outliers on train set' % len(outliers))
     ml_ready_y_train = y_train.drop(outliers, axis=0)
@@ -154,19 +147,16 @@ def exec_offline_pipeline(train_paths, test_paths=None, target_column=None, colu
         X_test.drop(X_test_cols_to_drop, axis=1, inplace=True)
     filled_X_test = X_test
     if X_test.isnull().values.any():
-        filled_X_test = cleaning.fill_missing_values(X_test, pipeline_results)[0]
+        filled_X_test = cleaning.fill_missing_values(X_test)[0]
 
     # preprocessing
-    transformed_X_train, num_transformations, cat_transformations, updated_num_cols, updated_cat_cols, col_to_width_edges, col_to_depth_edges = transformations.preprocess_train_columns(
-        X_train=cleaned_X_train, pipeline_results=pipeline_results, X_test=filled_X_test)
+    transformed_X_train, train_transformations = transformations.preprocess_train_columns(
+        X_train=cleaned_X_train, X_test=filled_X_test)
     logger.info('categorical and numerical columns transformed')
-    pipeline_results.save_transformations(num_transformations, cat_transformations, updated_num_cols, updated_cat_cols,
-                                          col_to_width_edges, col_to_depth_edges)
+    pipeline_results.save_transformations(train_transformations)
 
     # features engineering
-    X_train_with_new_features, created_features = features_engineering.create_features(transformed_X_train,
-                                                                                       ml_ready_y_train,
-                                                                                       pipeline_results)
+    X_train_with_new_features, created_features = features_engineering.create_features(transformed_X_train)
     logger.info('created new simple features, overall %s:\n%s' % (
         len(X_train_with_new_features.columns.tolist()), X_train_with_new_features.columns.tolist()))
     ml_ready_X_train, selected_features = features_engineering.select_features(X_train_with_new_features,
@@ -176,10 +166,8 @@ def exec_offline_pipeline(train_paths, test_paths=None, target_column=None, colu
     pipeline_results.save_features(created_features, selected_features)
 
     # transform X_test as X_train
-    transformed_X_test = transformations.preprocess_test_columns(filled_X_test, pipeline_results)
-    X_test_with_new_features, _ = features_engineering.create_features(transformed_X_test,
-                                                                       y_test,
-                                                                       pipeline_results)
+    transformed_X_test = transformations.preprocess_test_columns(filled_X_test, train_transformations)
+    X_test_with_new_features, _ = features_engineering.create_features(transformed_X_test)
     ml_ready_X_test = X_test_with_new_features.loc[:,
                       list(set(selected_features).intersection(X_test_with_new_features.columns.tolist()))]
     ml_ready_X_train = ml_ready_X_train.loc[:,

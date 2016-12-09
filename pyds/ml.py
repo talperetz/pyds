@@ -8,8 +8,9 @@
 import math
 from collections import defaultdict, Counter
 
+import hdbscan
 import pandas as pd
-from hyperopt import fmin, tpe, hp
+from hyperopt import fmin, rand, hp
 from orangecontrib.associate.fpgrowth import association_rules, frequent_itemsets, rules_stats
 from sklearn import metrics
 from sklearn.cluster import KMeans, SpectralClustering, MiniBatchKMeans, DBSCAN, AffinityPropagation
@@ -48,7 +49,9 @@ class MLModel:
 
     def _hyperopt_function(self, params):
         model = self.implementation(**params)
-        return cross_val_score(model, self.X, self.y, scoring=self.scoring).mean()
+        score_to_max = cross_val_score(model, self.X, self.y, scoring=self.scoring).mean()
+        score_to_min = -1 * score_to_max
+        return score_to_min
 
     def optimize(self, X_train, y_train, scoring, max_evals=500):
         """
@@ -64,9 +67,9 @@ class MLModel:
         self.y = y_train
         self.scoring = scoring
         self.best_params = fmin(self._hyperopt_function, self.param_space,
-                                algo=tpe.suggest, max_evals=max_evals)
+                                algo=rand.suggest, max_evals=max_evals)
         self.best_score = self._hyperopt_function(self.best_params)
-        self.implementation = self.implementation(self.best_params)
+        self.implementation = self.implementation(**self.best_params)
         return self
 
     def predict(self, X_test):
@@ -75,7 +78,9 @@ class MLModel:
         :param X_test: test dataframe
         :return: predictions as np.array
         """
-        return self.implementation.predict(X_test)
+        assert (self.X is not None) and (self.implementation is not None)
+        model = self.implementation.fit(self.X, self.y)
+        return model.predict(X_test)
 
 
 def classify(X_train, X_test, y_train, scoring='accuracy'):
@@ -123,7 +128,7 @@ def classify(X_train, X_test, y_train, scoring='accuracy'):
     })
     mlp = MLModel('MLPClassifier', MLPClassifier, param_space={
         'hidden_layer_sizes': hp.choice('hidden_layer_sizes', [50, 100, 500]),
-        'alpha': hp.choice('alpha', hp.choice[0.0001, 0.1])
+        'alpha': hp.choice('alpha', [0.0001, 0.1])
     })
     ada = MLModel('AdaBoostClassifier', AdaBoostClassifier, param_space={
         'n_estimators': hp.choice('n_estimators', [100, 500, 1000])
@@ -161,20 +166,19 @@ def regress(X_train, X_test, y_train, scoring='neg_mean_squared_error'):
     # models configurations
     num_of_features = len(X_train.columns)
     sgd = MLModel('SGDRegressor', SGDRegressor, {
-        'loss': hp.choice('loss', ['squared_loss', 'huber']),
-        'penalty': hp.choice('penalty ', ['none', 'l2', 'l1', 'elasticnet']),
+        'loss': hp.choice('loss', ['squared_epsilon_insensitive', 'huber']),
         'warm_start': hp.choice('warm_start', [False, True])
     })
     lasso = MLModel('Lasso', Lasso, {
-        'alpha': hp.choice('alpha', hp.uniform(0.2, 2.5))
+        'alpha': hp.uniform('alpha', 0.2, 2.0)
     })
     enet = MLModel('ElasticNet', ElasticNet, {
-        'alpha': hp.choice('alpha', hp.uniform(0.2, 2.5)),
-        'normalize': hp.choice('normalize', hp.choice([False, True]))
+        'alpha': hp.uniform('alpha', 0.2, 2.5),
+        'normalize': hp.choice('normalize', [False, True])
     })
     ridge = MLModel('Ridge', Ridge, {
-        'alpha': hp.choice('alpha', hp.uniform(0.2, 2.5)),
-        'normalize': hp.choice('normalize', hp.choice([False, True]))
+        'alpha': hp.uniform('alpha', 0.2, 2.5),
+        'normalize': hp.choice('normalize', [False, True])
     })
     svr = MLModel('SVR', SVR, {
         'C': hp.uniform('C', 0, 20),
@@ -186,7 +190,7 @@ def regress(X_train, X_test, y_train, scoring='neg_mean_squared_error'):
         'n_estimators': hp.choice('n_estimators', [100, 500, 1000, 2000])
     })
     rf_regressor = MLModel('RandomForestRegressor', RandomForestRegressor, {
-        'max_depth': hp.choice('max_depth', range(1, 20)),
+        'max_depth': hp.choice('max_depth', [1, 5, 10, 20]),
         'max_features': hp.choice('max_features', [int(math.sqrt(num_of_features) / 2.0),
                                                    int(math.sqrt(num_of_features)),
                                                    int(2 * math.sqrt(num_of_features))]),
@@ -195,7 +199,7 @@ def regress(X_train, X_test, y_train, scoring='neg_mean_squared_error'):
     })
 
     # models competition
-    competing_models = [sgd, lasso, enet, ridge, svr, gbr, rf_regressor]
+    competing_models = [lasso, enet, ridge, svr, gbr]
     model_to_best_score = {model: model.optimize(X_train=X_train, y_train=y_train, scoring=scoring).best_score for model
                            in competing_models}
     best_model = max(model_to_best_score, key=model_to_best_score.get)
@@ -359,10 +363,9 @@ def associate_rules(df, min_support, min_confidence):
     return rules_df
 
 
-def detect_anomalies(X, y=None, contamination=0.1):
+def detect_anomalies_with_isolation_forest(X, y=None, contamination=0.1):
     """
-    given a pandas DataFrame returns dataframe with contamination*num of instances
-    rows dropped using isolation forest to detect outliers.
+    given a pandas DataFrame returns outliers indexes using isolation forest to detect outliers.
 
     In data mining, anomaly detection (also outlier detection) is the identification of items,
     events or observations which do not conform to an expected pattern or other items in a dataset.
@@ -384,3 +387,26 @@ def detect_anomalies(X, y=None, contamination=0.1):
         if is_outlier == -1:
             outliers.append(i)
     return df.index[outliers]
+
+
+def detect_anomalies_with_hdbscan(X, y=None, contamination=0.1, min_cluster_size=15):
+    """
+    given a pandas DataFrame returns outliers indexes using hdbscan to detect outliers.
+
+    In data mining, anomaly detection (also outlier detection) is the identification of items,
+    events or observations which do not conform to an expected pattern or other items in a dataset.
+
+    :param min_cluster_size: the minimum size of clusters
+    :param y: [pandas series] target column
+    :param X: [pandas DataFrame] raw features
+    :param contamination:  the proportion of outliers in the data set
+    :return: outliers indexes
+    """
+    df = X.copy()
+    if y is not None:
+        df[y.name] = y
+    clusterer = hdbscan.HDBSCAN(min_cluster_size=min_cluster_size).fit(df)
+    outliers_scores = pd.Series(clusterer.outlier_scores_, index=X.index)
+    threshold = pd.Series(outliers_scores).quantile(1.0 - contamination)
+    outliers = outliers_scores[outliers_scores > threshold].index
+    return outliers

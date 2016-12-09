@@ -13,7 +13,7 @@ from sklearn.preprocessing import FunctionTransformer, MinMaxScaler
 from pyds import constants
 
 
-def create_features(X, y, pipeline_results):
+def create_features(X):
     """
     given an encoded and scaled pandas DataFrame returns dataframe with new features columns based on
     polynomial features combination, log transformation and one hot encoding
@@ -26,8 +26,7 @@ def create_features(X, y, pipeline_results):
     discover-feature-engineering-how-to-engineer-features-and-how-to-get-good-at-it/>`_
     `Quora - feature engineering <https://www.quora.com/What-are-some-best-practices-in-Feature-Engineering>`_
     """
-    numerical_cols = list(
-        set(X.columns).intersection(pipeline_results.transformations_results.numerical_cols).difference([y.name]))
+    numerical_cols = X.select_dtypes(include=['float', 'int']).columns
     X_num = X.loc[:, numerical_cols].copy()
     created_features = set()
     log_features, one_hot_features = None, None

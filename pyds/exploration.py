@@ -11,7 +11,7 @@ from pyds import constants
 from pyds import ml
 
 
-def describe(X, pipeline_results, y=None, **kwargs):
+def describe(X, y=None, **kwargs):
     """
     given a pandas pandas DataFrame returns a pandas DataFrame describing basic statistics about numeric columns
     :param y: [pandas Series] target column
@@ -20,8 +20,8 @@ def describe(X, pipeline_results, y=None, **kwargs):
     :return: pandas DataFrame describing basic statistics about numeric columns
     """
     df = X.copy()
-    numerical_cols = pipeline_results.ingestion_results.numerical_cols
-    categorical_cols = pipeline_results.ingestion_results.categorical_cols
+    numerical_cols = X.select_dtypes(include=['float', 'int']).columns
+    categorical_cols = X.select_dtypes(include=['category']).columns
     num_description, cat_description = None, None
     if y is not None:
         df[y.name] = y
@@ -32,7 +32,7 @@ def describe(X, pipeline_results, y=None, **kwargs):
     return num_description, cat_description
 
 
-def hist(X, pipeline_results, y=None, **kwargs):
+def hist(X, y=None, **kwargs):
     """
     given a pandas DataFrame plots a histogram for each numeric columns
     if a by=column keyword is passed splits the groups according to other column
@@ -41,12 +41,12 @@ def hist(X, pipeline_results, y=None, **kwargs):
     :param y: [pandas Series] target column
     :param kwargs: passed to pandas.Series.hist
     """
-    numerical_cols = pipeline_results.ingestion_results.numerical_cols
-    categorical_cols = pipeline_results.ingestion_results.categorical_cols
     numerical_figures, categorical_figures = [], []
     df = X.copy()
     if y is not None:
         df[y.name] = y
+    numerical_cols = X.select_dtypes(include=['float', 'int']).columns
+    categorical_cols = X.select_dtypes(include=['category']).columns
 
     # numerical columns histogram plotting
     for i, col in enumerate(numerical_cols):
@@ -63,7 +63,7 @@ def hist(X, pipeline_results, y=None, **kwargs):
     return numerical_figures, categorical_figures
 
 
-def box_plot(X, pipeline_results, y=None, **kwargs):
+def box_plot(X, y=None, **kwargs):
     """
     given a pandas DataFrame plots a boxplot for each numeric columns
     if a by=column keyword is passed splits the groups according to other column
@@ -72,11 +72,11 @@ def box_plot(X, pipeline_results, y=None, **kwargs):
     :param X: [pandas DataFrame] predictor columns
     :param kwargs: passed to pandas.Series.hist
     """
-    numerical_cols = pipeline_results.ingestion_results.numerical_cols
-    categorical_cols = pipeline_results.ingestion_results.categorical_cols
     numerical_figures, categorical_figures = [], []
     df = X.copy()
     df[y.name] = y
+    numerical_cols = X.select_dtypes(include=['float', 'int']).columns
+    categorical_cols = X.select_dtypes(include=['category']).columns
 
     # numerical columns box_plot plotting
     for i, col in enumerate(numerical_cols):
@@ -109,7 +109,7 @@ def scatter_plot(X_after_transformations, y_train, **kwargs):
     return figures
 
 
-def contingency_table(X, pipeline_results, y=None):
+def contingency_table(X, y=None):
     """
     given a pandas DataFrame and target_column
     returns a list of contingency tables per categorical column
@@ -120,7 +120,7 @@ def contingency_table(X, pipeline_results, y=None):
     """
     df = X.copy()
     contingency_tables = []
-    categorical_cols = list(pipeline_results.ingestion_results.categorical_cols)
+    categorical_cols = df.select_dtypes(include=['category']).columns
     cross_col = "count"
     if y is not None:
         cross_col = y
