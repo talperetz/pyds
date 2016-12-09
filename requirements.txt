@@ -1,3 +1,4 @@
+hdbscan
 hyperopt
 pyqt5
 pandas
