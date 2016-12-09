@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.linear_model import RandomizedLasso
-from sklearn.preprocessing import PolynomialFeatures, FunctionTransformer, MinMaxScaler
+from sklearn.preprocessing import FunctionTransformer, MinMaxScaler
 
 from pyds import constants
 
@@ -30,12 +30,9 @@ def create_features(X, y, pipeline_results):
         set(X.columns).intersection(pipeline_results.transformations_results.numerical_cols).difference([y.name]))
     X_num = X.loc[:, numerical_cols].copy()
     created_features = set()
-    poly_features, log_features, one_hot_features = None, None, None
+    log_features, one_hot_features = None, None
     if len(X_num.columns) > 0:
-        poly = PolynomialFeatures()
         log_transformer = FunctionTransformer(func=np.log)
-        poly_features = pd.DataFrame(data=poly.fit_transform(X_num),
-                                     columns=poly.get_feature_names(X_num.columns.tolist()), index=X_num.index)
         log_features = pd.DataFrame(data=log_transformer.fit_transform(X_num),
                                     columns=('log_%s' % col_name for col_name in numerical_cols),
                                     index=X_num.index)
@@ -50,9 +47,8 @@ def create_features(X, y, pipeline_results):
                     key=abs))}
         column_to_replacements = {col: replacements for col in log_features.columns.tolist()}
         log_features = log_features.replace(column_to_replacements)
-        created_features.update(poly_features.columns.tolist())
         created_features.update(log_features.columns.tolist())
-    return pd.concat([df for df in [poly_features, log_features, one_hot_features] if df is not None],
+    return pd.concat([df for df in [log_features, one_hot_features] if df is not None],
                      axis=1), created_features
 
 
