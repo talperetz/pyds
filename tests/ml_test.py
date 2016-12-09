@@ -68,7 +68,7 @@ class PipelineTestCase(unittest.TestCase):
 
     def test_detect_anomalies(self):
         # todo: generate dataframes
-        outliers = ml.detect_anomalies()
+        outliers = ml.detect_anomalies_with_isolation_forest()
         # todo: check the returning values
         pass
 

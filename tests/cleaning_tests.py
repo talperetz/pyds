@@ -8,9 +8,12 @@
 
 import os
 import unittest
+
 import pandas as pd
+
 from pyds import cleaning, constants
 from tests import data_generators
+from tests import tests_constants
 
 
 class PipelineTestCase(unittest.TestCase):
@@ -39,23 +42,25 @@ class PipelineTestCase(unittest.TestCase):
 
     def test_remove_id_columns(self):
         gen_df = data_generators.generate_random_data(100, 15)
-        id_df = data_generators.generate_id_cols(100, 6)
+        id_df = data_generators.generate_id_cols(100, 6, col_names=range(15, 22))
         gen_df_with_id_columns = pd.concat([gen_df, id_df], axis=1)
-        gen_df_without_id_cols = cleaning.remove_id_columns(gen_df_with_id_columns)
-        self.assertEqual(gen_df.columns, gen_df_without_id_cols.columns)
+        gen_df_without_id_cols = cleaning.remove_id_columns(gen_df_with_id_columns, id_columns=id_df.columns)
+        self.assertEqual(gen_df.columns.tolist(), gen_df_without_id_cols.columns.tolist())
 
     def test_fill_missing_values(self):
-        # todo: generate dataframes with missing values
-        cleaning.fill_missing_values()
-        # todo: test received dataframe is filled with reasonable values
-        pass
+        df = data_generators.generate_random_data(100, 15)
+        df_with_missing_values = data_generators.generate_empty_values(df)
+        cleaning.fill_missing_values(df_with_missing_values)
+        self.assertFalse(df.isnull().any().any())
 
     def test_detect_outliers(self):
-        # todo: generate dataframes with outliers
-        cleaning.detect_outliers()
-        # todo: test received outliers
-        pass
-
+        # Generate sample data
+        centers = [[1, 1], [-1, -1], [1, -1]]
+        densities = [0.2, 0.35, 0.5]
+        X, labels_true = data_generators.make_var_density_blobs(n_samples=750, centers=centers, cluster_std=densities,
+                                                                random_state=0)
+        outliers = cleaning.detect_outliers(X, contamination=tests_constants.CONTAMINATION)
+        self.assertAlmostEquals(len(outliers), tests_constants.CONTAMINATION * X.shape[0])
 
 if __name__ == '__main__':
     unittest.main()
