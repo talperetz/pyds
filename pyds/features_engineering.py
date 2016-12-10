@@ -6,7 +6,6 @@
 
 import numpy as np
 import pandas as pd
-from sklearn.ensemble import RandomForestRegressor
 from sklearn.linear_model import RandomizedLasso
 from sklearn.preprocessing import FunctionTransformer, MinMaxScaler
 
@@ -29,7 +28,7 @@ def create_features(X):
     numerical_cols = X.select_dtypes(include=['float', 'int']).columns
     X_num = X.loc[:, numerical_cols].copy()
     created_features = set()
-    log_features, one_hot_features = None, None
+    log_features = None
     if len(X_num.columns) > 0:
         log_transformer = FunctionTransformer(func=np.log)
         log_features = pd.DataFrame(data=log_transformer.fit_transform(X_num),
@@ -47,14 +46,14 @@ def create_features(X):
         column_to_replacements = {col: replacements for col in log_features.columns.tolist()}
         log_features = log_features.replace(column_to_replacements)
         created_features.update(log_features.columns.tolist())
-    return pd.concat([df for df in [log_features, one_hot_features] if df is not None],
+    return pd.concat([df for df in [X, log_features] if df is not None],
                      axis=1), created_features
 
 
-def _rank_to_dict(ranks, names, order=1):
+def _get_col_name_to_rank(ranks, names, order=1):
     scaler = MinMaxScaler()
     ranks = scaler.fit_transform(order * np.array([ranks]).T).T[0]
-    ranks = map(lambda x: round(x, 2), ranks)
+    # ranks = map(lambda x: round(x, 2), ranks)
     return dict(zip(names, ranks))
 
 
@@ -65,28 +64,21 @@ def select_features(X, y):
     :param y: [pandas Series] target column
     :param X: [pandas DataFrame] predictor columns
     :return: dataframe without meaningless features according to RandomizedLasso and RandomForestRegressor
-    feature selection
+    feature selection, dropped columns
     links: `Quora - feature selection <https://www.quora.com/How-do-I-perform-feature-selection>`_
     `selecting good features
     <http://blog.datadive.net/selecting-good-features-part-iv-stability-selection-rfe-and-everything-side-by-side/>`_
     """
     reduced_df = X.copy()
     names = X.columns.tolist()
-    ranks = {}
 
     # ranking
-    rf = RandomForestRegressor()
-    rf.fit(X, y)
-    ranks["RF"] = _rank_to_dict(rf.feature_importances_, names)
-
     rlasso = RandomizedLasso(alpha=0.04)
     rlasso.fit(X, y)
-    ranks["Stability"] = _rank_to_dict(np.abs(rlasso.scores_), names)
+    col_name_to_rank = _get_col_name_to_rank(np.abs(rlasso.scores_), names)
 
-    # dropping irrelevant features by two models
-    rf_zeros = {i for i, score in enumerate(ranks["RF"]) if score == 0}
-    rlasso_zeros = {i for i, score in enumerate(ranks["Stability"]) if score == 0}
-    columns_to_drop = list(rf_zeros.intersection(rlasso_zeros))
+    # dropping irrelevant features
+    columns_to_drop = [name for name, rank in col_name_to_rank.items() if rank == 0]
     if columns_to_drop:
-        reduced_df = X.drop(X.columns[columns_to_drop], axis=1)
-    return reduced_df, reduced_df.columns
+        reduced_df = X.drop(columns_to_drop, axis=1)
+    return reduced_df, columns_to_drop

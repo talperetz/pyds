@@ -9,7 +9,10 @@
 import os
 import unittest
 
+import pandas as pd
+
 from pyds import features_engineering, constants
+from tests import data_generators
 
 
 class PipelineTestCase(unittest.TestCase):
@@ -37,16 +40,20 @@ class PipelineTestCase(unittest.TestCase):
             warnings.showwarning = warn_with_traceback
 
     def test_create_features(self):
-        # todo: generate dataframe with numerical values
-        df_with_new_features = features_engineering.create_features()
-        # todo: check the returning values
-        pass
+        X = data_generators.generate_random_data(100, 15)
+        df_with_new_features, features_created = features_engineering.create_features(X)
+        self.assertGreater(df_with_new_features.shape[1], X.shape[1])
+        self.assertTrue(set(df_with_new_features.columns).intersection(X.columns) == set(X.columns))
+        self.assertTrue(set(df_with_new_features.columns).difference(X.columns) == features_created)
 
     def test_select_features(self):
-        # todo: generate dataframes
-        reduced_df, reduced_cols = features_engineering.select_features()
-        # todo: check the returning values
-        pass
+        X = data_generators.generate_random_data(1000, 15)
+        y = (0.3 * X[0] + X[1] + X[2] - 2 * X[3]) * 0.2
+        X = pd.concat([X, X[[1, 2, 3]].rename(columns=lambda name: name + 15)], axis=1)
+        reduced_df, dropped_columns = features_engineering.select_features(X, y)
+        self.assertGreaterEqual(len(X.columns), len(reduced_df.columns))
+        if len(dropped_columns) > 0:
+            self.assertTrue(set(X.columns).difference(reduced_df.columns) == set(dropped_columns))
 
 
 if __name__ == '__main__':

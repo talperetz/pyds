@@ -32,7 +32,7 @@ class PipelineResults:
             None for _ in range(6))
 
     class Features:
-        transformations, created_features = (None for _ in range(2))
+        created_features, dropped_features = (None for _ in range(2))
 
     class ML:
         best_model, predictions_df, scores, clusterer_to_results, scatter_plots = (None for _ in range(5))
@@ -69,9 +69,9 @@ class PipelineResults:
         self.transformations_results.col_to_width_edges = train_transformations.col_to_width_edges
         self.transformations_results.col_to_depth_edges = train_transformations.col_to_depth_edges
 
-    def save_features(self, created_features, selected_features):
+    def save_features(self, created_features, dropped_features):
         self.features_results.created_features = created_features
-        self.features_results.selected_features = selected_features
+        self.features_results.dropped_features = dropped_features
 
     def save_models(self, best_model, predictions_df, scores, clusterer_to_results, scatter_plots):
         self.ml_results.best_model = best_model
@@ -159,17 +159,17 @@ def exec_offline_pipeline(train_paths, test_paths=None, target_column=None, colu
     X_train_with_new_features, created_features = features_engineering.create_features(transformed_X_train)
     logger.info('created new simple features, overall %s:\n%s' % (
         len(X_train_with_new_features.columns.tolist()), X_train_with_new_features.columns.tolist()))
-    ml_ready_X_train, selected_features = features_engineering.select_features(X_train_with_new_features,
-                                                                               ml_ready_y_train)
+    ml_ready_X_train, dropped_columns = features_engineering.select_features(X_train_with_new_features,
+                                                                             ml_ready_y_train)
     logger.info(
-        'selected %s features:\n%s' % (len(ml_ready_X_train.columns.tolist()), ml_ready_X_train.columns.tolist()))
-    pipeline_results.save_features(created_features, selected_features)
+        'dropped %s features:\n%s' % (len(dropped_columns), dropped_columns))
+    pipeline_results.save_features(created_features, dropped_columns)
 
     # transform X_test as X_train
     transformed_X_test = transformations.preprocess_test_columns(filled_X_test, train_transformations)
     X_test_with_new_features, _ = features_engineering.create_features(transformed_X_test)
     ml_ready_X_test = X_test_with_new_features.loc[:,
-                      list(set(selected_features).intersection(X_test_with_new_features.columns.tolist()))]
+                      list(set(ml_ready_X_train.columns).intersection(X_test_with_new_features.columns.tolist()))]
     ml_ready_X_train = ml_ready_X_train.loc[:,
                        list(set(ml_ready_X_train.columns).intersection(ml_ready_X_test.columns.tolist()))]
     logger.info('test set transformed successfully\n applying ML models')
