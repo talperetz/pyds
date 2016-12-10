@@ -40,7 +40,7 @@ def generate_empty_values(df, frac=0.3):
     return df_with_nans
 
 
-def make_var_density_blobs(n_samples=750, centers=[[0, 0]], cluster_std=[0.5], random_state=0):
+def make_var_density_blobs(n_samples=750, centers=[[0, 0]], cluster_std=[0.5]):
     samples_per_blob = n_samples // len(centers)
     blobs = [datasets.make_blobs(n_samples=samples_per_blob, centers=[c], cluster_std=cluster_std[i])[0]
              for i, c in enumerate(centers)]

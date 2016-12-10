@@ -9,12 +9,23 @@
 import os
 import unittest
 
+import matplotlib
+import pandas as pd
+from sklearn.datasets import load_diabetes
+
 from pyds import exploration, constants
+from tests import data_generators
 
 
 class PipelineTestCase(unittest.TestCase):
     logger = None
     is_warnings_traced = False
+    cat_and_num_X = None
+    cat_and_num_y = None
+    num_X = None
+    num_y = None
+    cat_X = None
+    cat_y = None
 
     def setUp(self):
         import traceback
@@ -36,42 +47,89 @@ class PipelineTestCase(unittest.TestCase):
         if self.is_warnings_traced:
             warnings.showwarning = warn_with_traceback
 
+        cat_and_num_df = pd.DataFrame(load_diabetes()['data'])
+        cat_and_num_df[[0, 1, 2]] = cat_and_num_df[[0, 1, 2]].apply(lambda col: col.astype('category'))
+        self.cat_and_num_X = cat_and_num_df
+        self.cat_and_num_y = pd.Series(load_diabetes()['target'])
+        self.num_X = data_generators.generate_random_data(100, 15)
+        self.num_y = data_generators.generate_random_data(100, 1)
+        self.cat_X = cat_and_num_df.select_dtypes(exclude=['int', 'float'])
+        self.cat_y = self.cat_and_num_y
+
     def test_describe(self):
-        # todo: generate dataframes
-        exploration.describe()
-        # todo: test received dataframe
-        pass
+        diabetes_num_description, diabetes_cat_description = exploration.describe(self.cat_and_num_X)
+        self.assertIsInstance(diabetes_num_description, pd.DataFrame)
+        self.assertIsInstance(diabetes_cat_description, pd.DataFrame)
+        self.assertTrue((not diabetes_num_description.empty) and (not diabetes_cat_description.empty))
+        rand_df_num_description, rand_df_cat_description = exploration.describe(self.num_X)
+        self.assertIsInstance(rand_df_num_description, pd.DataFrame)
+        self.assertTrue(not rand_df_num_description.empty)
+        self.assertIsNone(rand_df_cat_description)
+        cat_df_num_description, cat_df_cat_description = exploration.describe(self.cat_X)
+        self.assertIsInstance(cat_df_cat_description, pd.DataFrame)
+        self.assertTrue(not cat_df_cat_description.empty)
+        self.assertIsNone(cat_df_num_description)
+
+    def _assert_figures(self, figures):
+        for figure in figures:
+            self.assertIsInstance(figure, matplotlib.figure.Figure)
 
     def test_hist(self):
-        # todo: generate dataframes
-        numerical_figures, categorical_figures = exploration.hist()
-        # todo: test received numerical_figures, categorical_figures
-        pass
+        diabetes_num_figure, diabetes_cat_figure = exploration.hist(self.cat_and_num_X)
+        self._assert_figures(diabetes_num_figure)
+        self._assert_figures(diabetes_cat_figure)
+        rand_df_num_figures, rand_df_cat_figures = exploration.hist(self.num_X)
+        self._assert_figures(rand_df_num_figures)
+        self.assertEqual(rand_df_cat_figures, [])
+        cat_df_num_figures, cat_df_cat_figures = exploration.hist(self.cat_X)
+        self._assert_figures(cat_df_cat_figures)
+        self.assertEqual(cat_df_num_figures, [])
 
     def test_box_plot(self):
-        # todo: generate dataframes
-        numerical_figures, categorical_figures = exploration.box_plot()
-        # todo: test received numerical_figures, categorical_figures
-        pass
+        diabetes_num_figure, diabetes_cat_figure = exploration.hist(self.cat_and_num_X)
+        self._assert_figures(diabetes_num_figure)
+        self._assert_figures(diabetes_cat_figure)
+        rand_df_num_figures, rand_df_cat_figures = exploration.hist(self.num_X)
+        self._assert_figures(rand_df_num_figures)
+        self.assertEqual(rand_df_cat_figures, [])
+        cat_df_num_figures, cat_df_cat_figures = exploration.hist(self.cat_X)
+        self._assert_figures(cat_df_cat_figures)
+        self.assertEqual(cat_df_num_figures, [])
 
     def test_scatter_plot(self):
-        # todo: generate dataframes
-        numerical_figures, categorical_figures = exploration.scatter_plot()
-        # todo: test received numerical_figures, categorical_figures
-        pass
+        diabetes__figures = exploration.scatter_plot(self.cat_and_num_X, self.cat_and_num_y)
+        self._assert_figures(diabetes__figures)
+        rand_df_figures = exploration.scatter_plot(self.num_X, self.num_y)
+        self._assert_figures(rand_df_figures)
+        cat_df_figures = exploration.scatter_plot(self.cat_X, self.cat_y)
+        self._assert_figures(cat_df_figures)
+
+    def _assert_contingency_tables(self, tables):
+        for table in tables:
+            self.assertIsInstance(table, pd.DataFrame)
+            self.assertTrue(not table.empty)
 
     def test_contingency_table(self):
-        # todo: generate dataframes
-        contingency_tables = exploration.contingency_table()
-        # todo: test received contingency_tables
-        pass
+        diabetes_contingency_tables = exploration.contingency_table(self.cat_and_num_X, self.cat_and_num_y)
+        self._assert_contingency_tables(diabetes_contingency_tables)
+        rand_df_contingency_tables = exploration.contingency_table(self.num_X)
+        self.assertEqual(rand_df_contingency_tables, [])
+        cat_df_contingency_tables = exploration.contingency_table(self.cat_X)
+        self._assert_contingency_tables(cat_df_contingency_tables)
 
     def test_correlations(self):
-        # todo: generate dataframes
-        corr, fig = exploration.correlations()
-        # todo: test received corr, fig
-        pass
-
+        diabetes_corr_matrix, diabetes_corr_figure = exploration.correlations(self.cat_and_num_X)
+        self.assertIsInstance(diabetes_corr_matrix, pd.DataFrame)
+        self.assertIsInstance(diabetes_corr_figure, matplotlib.figure.Figure)
+        self.assertTrue(not diabetes_corr_matrix.empty)
+        rand_df_corr_matrix, rand_df_corr_figure = exploration.correlations(self.num_X)
+        self.assertIsInstance(rand_df_corr_matrix, pd.DataFrame)
+        self.assertTrue(not rand_df_corr_matrix.empty)
+        self.assertIsInstance(rand_df_corr_figure, matplotlib.figure.Figure)
+        cat_df_corr_matrix, cat_df_corr_figure = exploration.correlations(self.cat_X)
+        self.assertIsInstance(cat_df_corr_matrix, pd.DataFrame)
+        self.assertTrue(cat_df_corr_matrix.empty)
+        self.assertIsInstance(cat_df_corr_figure, matplotlib.figure.Figure)
 
 if __name__ == '__main__':
     unittest.main()

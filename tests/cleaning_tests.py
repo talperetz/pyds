@@ -57,8 +57,7 @@ class PipelineTestCase(unittest.TestCase):
         # Generate sample data
         centers = [[1, 1], [-1, -1], [1, -1]]
         densities = [0.2, 0.35, 0.5]
-        X, labels_true = data_generators.make_var_density_blobs(n_samples=750, centers=centers, cluster_std=densities,
-                                                                random_state=0)
+        X, labels_true = data_generators.make_var_density_blobs(n_samples=750, centers=centers, cluster_std=densities)
         outliers = cleaning.detect_outliers(X, contamination=tests_constants.CONTAMINATION)
         self.assertAlmostEquals(len(outliers), tests_constants.CONTAMINATION * X.shape[0])
 

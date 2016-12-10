@@ -74,7 +74,8 @@ def box_plot(X, y=None, **kwargs):
     """
     numerical_figures, categorical_figures = [], []
     df = X.copy()
-    df[y.name] = y
+    if y is not None:
+        df[y.name] = y
     numerical_cols = X.select_dtypes(include=['float', 'int']).columns
     categorical_cols = X.select_dtypes(include=['category']).columns
 
@@ -124,11 +125,14 @@ def contingency_table(X, y=None):
     cross_col = "count"
     if y is not None:
         cross_col = y
-    if y.name in categorical_cols:
-        categorical_cols.remove(y.name)
-    for col in categorical_cols:
-        contingency_tables.append(
-            pd.crosstab(df[col], cross_col, margins=True).apply(lambda column: column / column[-1], axis=1))
+        if y.name in categorical_cols:
+            categorical_cols.remove(y.name)
+    if len(categorical_cols) > 1:
+        for col in categorical_cols:
+            contingency_tables.append(
+                pd.crosstab(df[col].values, cross_col, margins=True, normalize=True))
+    elif len(categorical_cols) == 1:
+        contingency_tables.append(pd.crosstab(df[categorical_cols], cross_col, margins=True, normalize=True))
     return contingency_tables
 
 
