@@ -8,8 +8,10 @@
 
 import os
 import unittest
-
+import numpy as np
+from sklearn.model_selection import train_test_split
 from pyds import ml, constants
+from tests import data_generators, tests_constants
 
 
 class PipelineTestCase(unittest.TestCase):
@@ -43,13 +45,18 @@ class PipelineTestCase(unittest.TestCase):
         pass
 
     def test_regress(self):
-        # todo: generate dataframes
-        best_model, predictions, best_score = ml.regress()
-        # todo: check the returning values
-        pass
+        X = data_generators.generate_random_data(1000, 15)
+        y = (0.3 * X[0] + X[1] + X[2] - 2 * X[3]) * 0.2
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=constants.TEST_SPLIT_SIZE)
+        best_model, predictions, best_score = ml.regress(X_train, X_test, y_train)
+        self.assertIsNotNone(best_model)
+        self.assertIsInstance(predictions, np.ndarray)
+        self.assertGreater(best_score, tests_constants.REGRESSION_SCORE_THRESHOLD)
 
     def test_create_clusters(self):
-        # todo: generate dataframe with numerical values
+        centers = [[1, 1], [-1, -1], [1, -1]]
+        densities = [0.2, 0.35, 0.5]
+        X, labels_true = data_generators.make_var_density_blobs(n_samples=750, centers=centers, cluster_std=densities)
         clusterer_to_results = ml.create_clusters()
         # todo: check the returning values
         pass

@@ -54,11 +54,10 @@ class PipelineTestCase(unittest.TestCase):
         self.assertFalse(df.isnull().any().any())
 
     def test_detect_outliers(self):
-        # Generate sample data
         centers = [[1, 1], [-1, -1], [1, -1]]
         densities = [0.2, 0.35, 0.5]
-        X, labels_true = data_generators.make_var_density_blobs(n_samples=750, centers=centers, cluster_std=densities)
         outliers = cleaning.detect_outliers(X, contamination=tests_constants.CONTAMINATION)
+        X, labels_true = data_generators.make_var_density_blobs(n_samples=750, centers=centers, cluster_std=densities)
         self.assertAlmostEquals(len(outliers), tests_constants.CONTAMINATION * X.shape[0])
 
 if __name__ == '__main__':
