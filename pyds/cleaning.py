@@ -22,6 +22,7 @@ def remove_id_columns(X_train, id_columns):
     :param id_columns: [list] columns to drop
     :return: pandas dataframe without id_columns
     """
+    assert (isinstance(X_train, pd.DataFrame)) and (not X_train.empty), 'X should be a valid pandas DataFrame'
     assert id_columns is not None
     return X_train.drop(id_columns, axis=1)
 
@@ -109,18 +110,17 @@ def _indicate_missing_values(df):
     return presence_series
 
 
-def fill_missing_values(X, method='knn',
-                        drop_above_null_percents=constants.DROP_ABOVE_NULL_THRESHOLD):
+def fill_missing_values(X, method='knn', drop_above_null_percents=constants.DROP_ABOVE_NULL_THRESHOLD):
     """
     given a pandas DataFrame and imputation method
     returns the dataframe with filled values according to method
     :param X: pandas DataFrame
-    :param pipeline_results: class: 'PipelineResults'
     :param method: 'mean', 'median', 'most_frequent', 'knn' - default
     :param drop_above_null_percents: if a row has more than drop_above_null_percents it will be removed
     instead of filled
     :return: pandas DataFrame without missing values, rows containing NaN, filled rows
     """
+    assert (isinstance(X, pd.DataFrame)) and (not X.empty), 'X should be a valid pandas DataFrame'
     df = X.copy()
     null_counts = df.apply(lambda row: row.isnull().sum(), axis=1)
     drop_idxs = null_counts[null_counts > (len(df.columns) * drop_above_null_percents)]
@@ -164,6 +164,7 @@ def detect_outliers(X, y=None, contamination=0.1, method='hdbscan', m=3,
     :param method:
     :return: outliers indexes
     """
+    assert (isinstance(X, pd.DataFrame)) and (not X.empty), 'X should be a valid pandas DataFrame'
     transformed_X = transformations.preprocess_train_columns(X, col_to_scaler=numerical_scaler)[0]
     if method == 'IsolationForest':
         outliers = ml.detect_anomalies_with_isolation_forest(transformed_X, y=y, contamination=contamination)

@@ -19,6 +19,7 @@ def describe(X, y=None, **kwargs):
     :param X: [pandas DataFrame] predictor columns
     :return: pandas DataFrame describing basic statistics about numeric columns
     """
+    assert (isinstance(X, pd.DataFrame)) and (not X.empty), 'X should be a valid pandas DataFrame'
     df = X.copy()
     numerical_cols = X.select_dtypes(include=['float', 'int']).columns
     categorical_cols = X.select_dtypes(include=['category']).columns
@@ -41,6 +42,7 @@ def hist(X, y=None, **kwargs):
     :param y: [pandas Series] target column
     :param kwargs: passed to pandas.Series.hist
     """
+    assert (isinstance(X, pd.DataFrame)) and (not X.empty), 'X should be a valid pandas DataFrame'
     numerical_figures, categorical_figures = [], []
     df = X.copy()
     if y is not None:
@@ -72,6 +74,7 @@ def box_plot(X, y=None, **kwargs):
     :param X: [pandas DataFrame] predictor columns
     :param kwargs: passed to pandas.Series.hist
     """
+    assert (isinstance(X, pd.DataFrame)) and (not X.empty), 'X should be a valid pandas DataFrame'
     numerical_figures, categorical_figures = [], []
     df = X.copy()
     if y is not None:
@@ -101,6 +104,7 @@ def scatter_plot(X_after_transformations, y_train, **kwargs):
     :param X_after_transformations: [pandas DataFrame] predictor columns without categorical data
     :param kwargs: passed to pandas.Series.plot
     """
+    assert (isinstance(X, pd.DataFrame)) and (not X.empty), 'X should be a valid pandas DataFrame'
     figures = []
     reducer_to_results = ml.reduce_dimensions(X_after_transformations, n_components=2)
     for i, reducer_results in enumerate(reducer_to_results.values()):
@@ -119,6 +123,7 @@ def contingency_table(X, y=None):
     :param X: [pandas DataFrame] predictor columns
     :return: list of contingency tables per categorical column
     """
+    assert (isinstance(X, pd.DataFrame)) and (not X.empty), 'X should be a valid pandas DataFrame'
     df = X.copy()
     contingency_tables = []
     categorical_cols = df.select_dtypes(include=['category']).columns
@@ -144,6 +149,7 @@ def correlations(X, y=None, size=constants.FIGURE_SIZE):
     :param size: matplotlib figure size
     :return: correlation matrix and figure representing the correlations
     """
+    assert (isinstance(X, pd.DataFrame)) and (not X.empty), 'X should be a valid pandas DataFrame'
     df = X.copy()
     if y is not None:
         df[y.name] = y

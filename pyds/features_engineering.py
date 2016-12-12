@@ -25,6 +25,7 @@ def create_features(X):
     discover-feature-engineering-how-to-engineer-features-and-how-to-get-good-at-it/>`_
     `Quora - feature engineering <https://www.quora.com/What-are-some-best-practices-in-Feature-Engineering>`_
     """
+    assert (isinstance(X, pd.DataFrame)) and (not X.empty), 'X should be a valid pandas DataFrame'
     numerical_cols = X.select_dtypes(include=['float', 'int']).columns
     X_num = X.loc[:, numerical_cols].copy()
     created_features = set()
@@ -69,6 +70,8 @@ def select_features(X, y):
     `selecting good features
     <http://blog.datadive.net/selecting-good-features-part-iv-stability-selection-rfe-and-everything-side-by-side/>`_
     """
+    assert (isinstance(X, pd.DataFrame)) and (not X.empty), 'X should be a valid pandas DataFrame'
+    assert (isinstance(y, pd.Series)) and (not y.empty), 'y should be a valid pandas Series'
     reduced_df = X.copy()
     names = X.columns.tolist()
 
