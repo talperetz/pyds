@@ -141,6 +141,7 @@ def preprocess_train_columns(X_train, col_to_scaler=defaultdict(MinMaxScaler), X
     :return: dataframe with columns ready for an ML model, categorical transformations list,
     numerical transformations list
     """
+    assert (isinstance(X_train, pd.DataFrame)) and (not X_train.empty), 'X_train should be a valid pandas DataFrame'
     numerical_cols = X_train.select_dtypes(include=['float', 'int']).columns
     categorical_cols = X_train.select_dtypes(include=['category']).columns
     is_numerical = len(numerical_cols) > 0
@@ -175,6 +176,7 @@ def preprocess_test_columns(X_test, train_transformations):
     :param pipeline_results: class: 'PipelineResults'
     :return: dataframe transformed exactly the same way the train set have transformed
     """
+    assert (isinstance(X_test, pd.DataFrame)) and (not X_test.empty), 'X_test should be a valid pandas DataFrame'
     numerical_cols = X_test.select_dtypes(include=['float', 'int']).columns
     categorical_cols = X_test.select_dtypes(include=['category']).columns
     is_numerical = len(numerical_cols) > 0
