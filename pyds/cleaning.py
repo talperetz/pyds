@@ -8,9 +8,9 @@ from collections import defaultdict
 
 import numpy as np
 import pandas as pd
+import collections
 from sklearn.neighbors import KNeighborsClassifier, KNeighborsRegressor
 from sklearn.preprocessing import Imputer, RobustScaler, MinMaxScaler
-
 from pyds import constants, ml, transformations
 
 
@@ -23,7 +23,7 @@ def remove_id_columns(X_train, id_columns):
     :return: pandas dataframe without id_columns
     """
     assert (isinstance(X_train, pd.DataFrame)) and (not X_train.empty), 'X should be a valid pandas DataFrame'
-    assert id_columns is not None
+    assert isinstance(id_columns, collections.Iterable)
     return X_train.drop(id_columns, axis=1)
 
 

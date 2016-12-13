@@ -70,29 +70,21 @@ def read_sparse(*args, **kwargs):
 
 
 def validate_dataset(df):
-    if len(df.index) < 50:
-        raise Exception('there are not enough samples to make a decent analysis')
+    assert len(df.index) > 50, 'there are not enough samples to make a decent analysis'
 
 
 def get_train_test_splits(train_df, test_paths, target_column):
-    if (target_column is None) or (target_column not in train_df.columns) or (len(train_df[target_column].index) == 0):
-        raise ValueError("target column doesn't exist on train set")
+    assert target_column in train_df.columns, "target column doesn't exist on train set"
+    y_train = train_df[target_column]
+    X_train = train_df.drop(target_column, axis=1)
+    is_supervised = True
+    if test_paths:
+        test_df = read(test_paths)
+        assert target_column in test_df.columns, "target column doesn't exist on test set"
+        y_test = test_df[target_column]
+        X_test = test_df.drop(target_column, axis=1)
     else:
-        y_train = train_df[target_column]
-        X_train = train_df.drop(target_column, axis=1)
-        is_supervised = True
-        split_train = False
-        if test_paths:
-            test_df = read(test_paths)
-            if (target_column in test_df.columns) and (len(test_df[target_column].index) > 0):
-                y_test = test_df[target_column]
-                X_test = test_df.drop(target_column, axis=1)
-            else:
-                split_train = True
-        else:
-            split_train = True
-        if split_train:
-            X_train, X_test, y_train, y_test = train_test_split(X_train, y_train, test_size=constants.TEST_SPLIT_SIZE)
+        X_train, X_test, y_train, y_test = train_test_split(X_train, y_train, test_size=constants.TEST_SPLIT_SIZE)
     return X_train, X_test, y_train, y_test, is_supervised
 
 

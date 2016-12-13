@@ -78,7 +78,7 @@ class MLModel:
         :param X_test: test dataframe
         :return: predictions as np.array
         """
-        assert (self.X is not None) and (self.implementation is not None)
+        assert (self.X is not None) and (self.implementation is not None), "you should run optimize before predict"
         model = self.implementation.fit(self.X, self.y)
         return model.predict(X_test)
 
@@ -97,6 +97,9 @@ def classify(X_train, X_test, y_train, scoring='accuracy'):
     :param y_test: test true labels (target var)
     :return: the best_classifier according to the metric, it's predictions on the test set and it's metric score
     """
+    assert (isinstance(X_train, pd.DataFrame)) and (not X_train.empty), 'X_train should be a valid pandas DataFrame'
+    assert (isinstance(X_test, pd.DataFrame)) and (not X_test.empty), 'X_test should be a valid pandas DataFrame'
+    assert (isinstance(y_train, pd.Series)) and (not y_train.empty), 'y_train should be a valid pandas Series'
     # models configurations
     num_of_features = len(X_train.columns)
     knn = MLModel('KNeighborsClassifier', KNeighborsClassifier, param_space={
@@ -163,6 +166,9 @@ def regress(X_train, X_test, y_train, scoring='neg_mean_squared_error'):
     :param y_test: test true labels (target var)
     :return: the best_regressor according to the metric, it's predictions on the test set and it's metric score
     """
+    assert (isinstance(X_train, pd.DataFrame)) and (not X_train.empty), 'X_train should be a valid pandas DataFrame'
+    assert (isinstance(X_test, pd.DataFrame)) and (not X_test.empty), 'X_test should be a valid pandas DataFrame'
+    assert (isinstance(y_train, pd.Series)) and (not y_train.empty), 'y_train should be a valid pandas Series'
     # models configurations
     num_of_features = len(X_train.columns)
     sgd = MLModel('SGDRegressor', SGDRegressor, {
@@ -265,6 +271,7 @@ def create_clusters(df, cluster_cols, n_clusters=None, labels_true=None):
     :param n_clusters: num of clusters if known
     :return: dictionary of clustering algorithm to it's name, labels and metrics
     """
+    assert (isinstance(df, pd.DataFrame)) and (not df.empty), 'df should be a valid pandas DataFrame'
     X = df[cluster_cols]
     clustering_names, clustering_algorithms, clusterer_to_results = set(), set(), dict()
     if n_clusters is not None:
@@ -292,7 +299,7 @@ def create_clusters(df, cluster_cols, n_clusters=None, labels_true=None):
     return clusterer_to_results
 
 
-def reduce_dimensions(df, reduce_cols=None, n_components=None):
+def reduce_dimensions(df, reduce_cols=None, n_components=2):
     """
     given a dataframe, columns to reduce and number of components for dimensionality reduction algorithm
     returns a dictionary of reduction algorithm to it's name and reduced df.
@@ -305,13 +312,13 @@ def reduce_dimensions(df, reduce_cols=None, n_components=None):
     :param n_components: number of components for dimensionality reduction algorithm
     :return: dictionary of reduction algorithm to it's name and reduced df
     """
-    if reduce_cols and (set(reduce_cols).issubset(set(df.columns.tolist()))) and (
-                len(df[reduce_cols].index) > 0):
+    assert (isinstance(df, pd.DataFrame)) and (not df.empty), 'df should be a valid pandas DataFrame'
+    if reduce_cols:
+        assert (set(reduce_cols).issubset(set(df.columns.tolist()))) and (
+                len(df[reduce_cols].index) > 0), "reduce_cols must be a subset of df columns"
         X = df[reduce_cols].copy()
     else:
         X = df.copy()
-    if not n_components:
-        n_components = 2
     reductions_names, reductions_algorithms = set(), set()
 
     pca = PCA(n_components=n_components, svd_solver='randomized')
@@ -354,6 +361,7 @@ def associate_rules(df, min_support, min_confidence):
     'lift', 'leverage'
     :links: http://aimotion.blogspot.co.il/2013/01/machine-learning-and-data-mining.html, https://github.com/biolab/orange3-associate
     """
+    assert (isinstance(df, pd.DataFrame)) and (not df.empty), 'df should be a valid pandas DataFrame'
     matrix = df.to_matrix()
     itemsets = frequent_itemsets(matrix, min_support)
     rules = list(association_rules(itemsets, min_confidence))
@@ -375,6 +383,7 @@ def detect_anomalies_with_isolation_forest(X, y=None, contamination=0.1):
     :param contamination:  the proportion of outliers in the data set
     :return: outliers indexes
     """
+    assert (isinstance(X, pd.DataFrame)) and (not X.empty), 'X should be a valid pandas DataFrame'
     df = X.copy()
     if y is not None:
         df[y.name] = y
@@ -402,6 +411,7 @@ def detect_anomalies_with_hdbscan(X, y=None, contamination=0.1, min_cluster_size
     :param contamination:  the proportion of outliers in the data set
     :return: outliers indexes
     """
+    assert (isinstance(X, pd.DataFrame)) and (not X.empty), 'X should be a valid pandas DataFrame'
     df = X.copy()
     if y is not None:
         df[y.name] = y
