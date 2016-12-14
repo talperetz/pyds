@@ -28,5 +28,8 @@ NEG_INF_REPRESENTATION = -10  # multiplier for the most extreme value in column 
 # ML
 CLUSTERING_METRICS = ('completeness_score', 'homogeneity_score', 'mutual_info_score', 'adjusted_rand_score')
 
+# NLP
+LANGUAGE_TO_ENCODING = {'he': 'iso-8859-8'}
+
 # logging
 LOGGER_CONFIGURATION_RELATIVE_PATH = "../conf/logging.conf"
