@@ -4,7 +4,8 @@
 :TL;DR: this module is responsible for all natural language processing aspects
 """
 
-LANGUAGE_TO_ENCODING = {'he': 'iso-8859-8'}
+import pandas as pd
+from pyds import constants
 
 
 def decode_cols(X, language, decode_columns=None):
@@ -16,8 +17,8 @@ def decode_cols(X, language, decode_columns=None):
     :param decode_columns: [list] columns to decode in X
     :return: X where columns are decoded according to desired language
     """
-    if decode_columns:
-        df = X[decode_columns].copy()
-    else:
-        df = X.copy()
-    return df.apply(lambda col: df[col].str.decode(LANGUAGE_TO_ENCODING[language.lower()]))
+    assert (isinstance(X, pd.DataFrame)) and (not X.empty), 'X should be a valid pandas DataFrame'
+    assert language in constants.LANGUAGE_TO_ENCODING.keys(), \
+        'supported languages are %s' % constants.LANGUAGE_TO_ENCODING.keys()
+    df = X[decode_columns].copy() if decode_columns else X.copy()
+    return df.apply(lambda col: df[col].str.decode(constants.LANGUAGE_TO_ENCODING[language.lower()]))
