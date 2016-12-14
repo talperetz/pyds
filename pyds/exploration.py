@@ -6,6 +6,9 @@
 
 import pandas as pd
 from matplotlib import pyplot as plt
+import seaborn as sns
+
+sns.set_style("whitegrid")
 import numpy as np
 
 from pyds import constants
@@ -66,7 +69,7 @@ def hist(X, y=None, **kwargs):
     return numerical_figures, categorical_figures
 
 
-def box_plot(X, y=None, **kwargs):
+def box_plot(X, y=None):
     """
     given a pandas DataFrame plots a boxplot for each numeric columns
     if a by=column keyword is passed splits the groups according to other column
@@ -76,29 +79,25 @@ def box_plot(X, y=None, **kwargs):
     :param kwargs: passed to pandas.Series.hist
     """
     assert (isinstance(X, pd.DataFrame)) and (not X.empty), 'X should be a valid pandas DataFrame'
-    numerical_figures, categorical_figures = [], []
     df = X.copy()
     if y is not None:
         df[y.name] = y
-    numerical_cols = X.select_dtypes(include=[np.number]).columns
-    categorical_cols = X.select_dtypes(include=['category']).columns
-
-    # numerical columns box_plot plotting
-    for i, col in enumerate(numerical_cols):
-        numerical_figures.append(plt.figure(i))
-        plt.suptitle(col)
-        df[col].plot(kind='box', **kwargs)
-
-    # categorical columns box_plot plotting
-    for i, col in enumerate(categorical_cols):
-        categorical_figures.append(plt.figure(i))
-        plt.suptitle(col)
-        df[col].value_counts().dropna().plot(kind='box')
-
-    return numerical_figures, categorical_figures
+    numerical_cols = df.select_dtypes(include=[np.number]).columns
+    categorical_cols = df.select_dtypes(include=['category']).columns
+    numerical_figure = plt.figure()
+    sns.boxplot(x="distance", y="method", data=df[numerical_cols],
+                whis=np.inf, color="c")
+    sns.stripplot(x="distance", y="method", data=df[numerical_cols],
+                  jitter=True, size=3, color=".3", linewidth=0)
+    categorical_figure = plt.figure()
+    sns.boxplot(x="distance", y="method", data=df[categorical_cols],
+                whis=np.inf, color="c")
+    sns.stripplot(x="distance", y="method", data=df[categorical_cols],
+                  jitter=True, size=3, color=".3", linewidth=0)
+    return numerical_figure, categorical_figure
 
 
-def scatter_plot(X, y_train, **kwargs):
+def scatter_plot(X, y, **kwargs):
     """
     given a pandas DataFrame without categorical data plots scatterplot of the data for each
     reducer in ml.reduce_dimensions()
@@ -106,13 +105,12 @@ def scatter_plot(X, y_train, **kwargs):
     :param kwargs: passed to pandas.Series.plot
     """
     assert (isinstance(X, pd.DataFrame)) and (not X.empty), 'X should be a valid pandas DataFrame'
-    figures = []
-    reducer_to_results = ml.reduce_dimensions(X, n_components=2)
-    for i, reducer_results in enumerate(reducer_to_results.values()):
-        figures.append(plt.figure(i))
-        plt.suptitle(reducer_results[0])
-        plt.scatter(reducer_results[1][:, 0], reducer_results[1][:, 1], c=y_train)
-    return figures
+    assert (isinstance(y, pd.Series)) and (not y.empty), 'X should be a valid pandas Series'
+    df = X.copy()
+    df[y.name] = y
+    scatter_mat = sns.pairplot(df, hue=y.name, diag_kind="kde", plot_kws=dict(s=50, edgecolor="b", linewidth=1),
+                               diag_kws=dict(shade=True), **kwargs)
+    return scatter_mat
 
 
 def contingency_table(X, y=None):
@@ -154,9 +152,7 @@ def correlations(X, y=None, size=constants.FIGURE_SIZE):
     df = X.copy()
     if y is not None:
         df[y.name] = y
+    fig = plt.figure()
     corr = df.corr()
-    fig, ax = plt.subplots(figsize=(size, size))
-    ax.matshow(corr)
-    plt.xticks(range(len(corr.columns)), corr.columns)
-    plt.yticks(range(len(corr.columns)), corr.columns)
+    sns.clustermap(corr, linewidths=.5, figsize=(13, 13))
     return corr, fig
