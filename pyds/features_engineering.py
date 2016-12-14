@@ -26,7 +26,7 @@ def create_features(X):
     `Quora - feature engineering <https://www.quora.com/What-are-some-best-practices-in-Feature-Engineering>`_
     """
     assert (isinstance(X, pd.DataFrame)) and (not X.empty), 'X should be a valid pandas DataFrame'
-    numerical_cols = X.select_dtypes(include=['float', 'int']).columns
+    numerical_cols = X.select_dtypes(include=[np.number]).columns
     X_num = X.loc[:, numerical_cols].copy()
     created_features = set()
     log_features = None

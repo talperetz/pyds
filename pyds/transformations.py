@@ -105,6 +105,8 @@ def discretize(numerical_df, col_to_width_edges=None, col_to_depth_edges=None):
     :param col_to_depth_edges: used when you want preset bins
     :return: equal_width_num_df, col_to_width_edges, equal_depth_num_df, col_to_depth_edges
     """
+    assert (isinstance(numerical_df, pd.DataFrame)) and (not numerical_df.empty),\
+        'numerical_df should be a valid pandas DataFrame'
     is_edges_recieved = True
     if (not col_to_width_edges) and (not col_to_depth_edges):
         col_to_width_edges, col_to_depth_edges = {}, {}
@@ -142,7 +144,7 @@ def preprocess_train_columns(X_train, col_to_scaler=defaultdict(MinMaxScaler), X
     numerical transformations list
     """
     assert (isinstance(X_train, pd.DataFrame)) and (not X_train.empty), 'X_train should be a valid pandas DataFrame'
-    numerical_cols = X_train.select_dtypes(include=['float', 'int']).columns
+    numerical_cols = X_train.select_dtypes(include=[np.number]).columns
     categorical_cols = X_train.select_dtypes(include=['category']).columns
     is_numerical = len(numerical_cols) > 0
     is_categorical = len(categorical_cols) > 0
@@ -177,7 +179,7 @@ def preprocess_test_columns(X_test, train_transformations):
     :return: dataframe transformed exactly the same way the train set have transformed
     """
     assert (isinstance(X_test, pd.DataFrame)) and (not X_test.empty), 'X_test should be a valid pandas DataFrame'
-    numerical_cols = X_test.select_dtypes(include=['float', 'int']).columns
+    numerical_cols = X_test.select_dtypes(include=[np.number]).columns
     categorical_cols = X_test.select_dtypes(include=['category']).columns
     is_numerical = len(numerical_cols) > 0
     is_categorical = len(categorical_cols) > 0

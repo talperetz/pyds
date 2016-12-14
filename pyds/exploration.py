@@ -6,6 +6,7 @@
 
 import pandas as pd
 from matplotlib import pyplot as plt
+import numpy as np
 
 from pyds import constants
 from pyds import ml
@@ -21,7 +22,7 @@ def describe(X, y=None, **kwargs):
     """
     assert (isinstance(X, pd.DataFrame)) and (not X.empty), 'X should be a valid pandas DataFrame'
     df = X.copy()
-    numerical_cols = X.select_dtypes(include=['float', 'int']).columns
+    numerical_cols = X.select_dtypes(include=[np.number]).columns
     categorical_cols = X.select_dtypes(include=['category']).columns
     num_description, cat_description = None, None
     if y is not None:
@@ -47,7 +48,7 @@ def hist(X, y=None, **kwargs):
     df = X.copy()
     if y is not None:
         df[y.name] = y
-    numerical_cols = X.select_dtypes(include=['float', 'int']).columns
+    numerical_cols = X.select_dtypes(include=[np.number]).columns
     categorical_cols = X.select_dtypes(include=['category']).columns
 
     # numerical columns histogram plotting
@@ -79,7 +80,7 @@ def box_plot(X, y=None, **kwargs):
     df = X.copy()
     if y is not None:
         df[y.name] = y
-    numerical_cols = X.select_dtypes(include=['float', 'int']).columns
+    numerical_cols = X.select_dtypes(include=[np.number]).columns
     categorical_cols = X.select_dtypes(include=['category']).columns
 
     # numerical columns box_plot plotting
@@ -97,16 +98,16 @@ def box_plot(X, y=None, **kwargs):
     return numerical_figures, categorical_figures
 
 
-def scatter_plot(X_after_transformations, y_train, **kwargs):
+def scatter_plot(X, y_train, **kwargs):
     """
     given a pandas DataFrame without categorical data plots scatterplot of the data for each
     reducer in ml.reduce_dimensions()
-    :param X_after_transformations: [pandas DataFrame] predictor columns without categorical data
+    :param X: [pandas DataFrame] predictor columns without categorical data
     :param kwargs: passed to pandas.Series.plot
     """
     assert (isinstance(X, pd.DataFrame)) and (not X.empty), 'X should be a valid pandas DataFrame'
     figures = []
-    reducer_to_results = ml.reduce_dimensions(X_after_transformations, n_components=2)
+    reducer_to_results = ml.reduce_dimensions(X, n_components=2)
     for i, reducer_results in enumerate(reducer_to_results.values()):
         figures.append(plt.figure(i))
         plt.suptitle(reducer_results[0])

@@ -35,7 +35,7 @@ def _knn_imputation(df):
     :param df: pandas DataFrame
     :return: pandas DataFrame without missing values
     """
-    numerical_cols = df.select_dtypes(include=['float', 'int']).columns
+    numerical_cols = df.select_dtypes(include=[np.number]).columns
     filled_df = df.copy()  # the dataset we are filling and returning in the end
     nan_df = df[df.isnull().any(axis=1)]
     na_idxs_to_fill = set(nan_df.index)
