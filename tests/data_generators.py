@@ -10,6 +10,7 @@ import pandas as pd
 from sklearn import datasets
 
 from pyds import constants
+from tests import tests_constants
 
 
 def generate_random_data(n_rows, n_cols, rand_low=0, rand_high=100):
@@ -80,3 +81,10 @@ def make_var_density_blobs(n_samples=750, centers=[[0, 0]], cluster_std=[0.5]):
              for i, c in enumerate(centers)]
     labels = [i * np.ones(samples_per_blob) for i in range(len(centers))]
     return pd.DataFrame(np.vstack(blobs)), np.hstack(labels)
+
+
+def get_hr_dataset():
+    df = pd.DataFrame(tests_constants.KAGGLE_HR_DATASET)
+    df.sales = df.sales.astype('category')
+    df.salary = df.salary.astype('category')
+    return df
