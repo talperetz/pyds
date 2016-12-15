@@ -23,6 +23,8 @@ def generate_random_data(n_rows, n_cols, rand_low=0, rand_high=100):
     :return: pandas DataFrame shape - [n_rows, n_cols] with random numerical values
     """
     gen_df = pd.DataFrame(np.random.randint(rand_low, rand_high, size=(n_rows, n_cols)), columns=np.arange(n_cols))
+    if n_cols == 1:
+        return gen_df.iloc[:, 0]
     return gen_df
 
 
@@ -47,6 +49,8 @@ def generate_id_cols(n_rows, n_cols, rand_low=0, rand_high=100, col_names=None):
                         generate_random_data(num_of_rand_rows, 1, rand_low, rand_high))
         col_name = col_names[i] if col_names is not None else i
         df_with_id_cols[col_name] = pd.Series(ser, name=col_name)
+    if n_cols == 1:
+        return df_with_id_cols.iloc[:, 0]
     return df_with_id_cols
 
 

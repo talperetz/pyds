@@ -20,7 +20,7 @@ KNN_N_NEIGHBORS = 4  # [int > 0] knn is used to impute missing data
 
 # exploration
 CATEGORICAL_THRESHOLD = 10  # threshold use to differ categorical variables that are of numerical type
-FIGURE_SIZE = 8  # matplotlib fig_size
+FIGURE_SIZE = (8, 8)  # matplotlib fig_size
 
 # features engineering
 NEG_INF_REPRESENTATION = -10  # multiplier for the most extreme value in column to isolate from the rest of the data

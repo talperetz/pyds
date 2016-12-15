@@ -9,6 +9,7 @@
 import os
 import unittest
 
+import seaborn as sns
 import matplotlib
 import pandas as pd
 from sklearn.datasets import load_diabetes
@@ -74,35 +75,35 @@ class PipelineTestCase(unittest.TestCase):
         for figure in figures:
             self.assertIsInstance(figure, matplotlib.figure.Figure)
 
-    def test_hist(self):
-        diabetes_num_figure, diabetes_cat_figure = exploration.hist(self.cat_and_num_X)
+    def test_dist_plot(self):
+        diabetes_num_figure, diabetes_cat_figure = exploration.dist_plot(self.cat_and_num_X)
         self._assert_figures(diabetes_num_figure)
         self._assert_figures(diabetes_cat_figure)
-        rand_df_num_figures, rand_df_cat_figures = exploration.hist(self.num_X)
+        rand_df_num_figures, rand_df_cat_figures = exploration.dist_plot(self.num_X)
         self._assert_figures(rand_df_num_figures)
         self.assertEqual(rand_df_cat_figures, [])
-        cat_df_num_figures, cat_df_cat_figures = exploration.hist(self.cat_X)
+        cat_df_num_figures, cat_df_cat_figures = exploration.dist_plot(self.cat_X)
         self._assert_figures(cat_df_cat_figures)
         self.assertEqual(cat_df_num_figures, [])
 
     def test_box_plot(self):
-        diabetes_num_figure, diabetes_cat_figure = exploration.hist(self.cat_and_num_X)
-        self._assert_figures(diabetes_num_figure)
-        self._assert_figures(diabetes_cat_figure)
-        rand_df_num_figures, rand_df_cat_figures = exploration.hist(self.num_X)
-        self._assert_figures(rand_df_num_figures)
-        self.assertEqual(rand_df_cat_figures, [])
-        cat_df_num_figures, cat_df_cat_figures = exploration.hist(self.cat_X)
-        self._assert_figures(cat_df_cat_figures)
-        self.assertEqual(cat_df_num_figures, [])
+        diabetes_num_figure, diabetes_cat_figure = exploration.box_plot(self.cat_and_num_X)
+        self.assertIsInstance(diabetes_num_figure, matplotlib.figure.Figure)
+        self.assertIsInstance(diabetes_cat_figure, matplotlib.figure.Figure)
+        rand_df_num_figures, rand_df_cat_figures = exploration.box_plot(self.num_X)
+        self.assertIsInstance(rand_df_num_figures, matplotlib.figure.Figure)
+        self.assertEqual(rand_df_cat_figures, None)
+        cat_df_num_figures, cat_df_cat_figures = exploration.box_plot(self.cat_X)
+        self.assertIsInstance(cat_df_cat_figures, matplotlib.figure.Figure)
+        self.assertEqual(cat_df_num_figures, None)
 
     def test_scatter_plot(self):
-        diabetes__figures = exploration.scatter_plot(self.cat_and_num_X, self.cat_and_num_y)
-        self._assert_figures(diabetes__figures)
-        rand_df_figures = exploration.scatter_plot(self.num_X, self.num_y)
-        self._assert_figures(rand_df_figures)
+        diabetes_figure = exploration.scatter_plot(self.cat_and_num_X, self.cat_and_num_y)
+        self.assertIsInstance(diabetes_figure, sns.axisgrid.PairGrid)
+        rand_df_figure = exploration.scatter_plot(self.num_X, self.num_y)
+        self.assertIsInstance(rand_df_figure, sns.axisgrid.PairGrid)
         cat_df_figures = exploration.scatter_plot(self.cat_X, self.cat_y)
-        self._assert_figures(cat_df_figures)
+        self.assertIsInstance(cat_df_figures, sns.axisgrid.PairGrid)
 
     def _assert_contingency_tables(self, tables):
         for table in tables:
@@ -120,16 +121,15 @@ class PipelineTestCase(unittest.TestCase):
     def test_correlations(self):
         diabetes_corr_matrix, diabetes_corr_figure = exploration.correlations(self.cat_and_num_X)
         self.assertIsInstance(diabetes_corr_matrix, pd.DataFrame)
-        self.assertIsInstance(diabetes_corr_figure, matplotlib.figure.Figure)
+        self.assertIsInstance(diabetes_corr_figure, sns.matrix.ClusterGrid)
         self.assertTrue(not diabetes_corr_matrix.empty)
         rand_df_corr_matrix, rand_df_corr_figure = exploration.correlations(self.num_X)
         self.assertIsInstance(rand_df_corr_matrix, pd.DataFrame)
         self.assertTrue(not rand_df_corr_matrix.empty)
-        self.assertIsInstance(rand_df_corr_figure, matplotlib.figure.Figure)
+        self.assertIsInstance(rand_df_corr_figure, sns.matrix.ClusterGrid)
         cat_df_corr_matrix, cat_df_corr_figure = exploration.correlations(self.cat_X)
-        self.assertIsInstance(cat_df_corr_matrix, pd.DataFrame)
-        self.assertTrue(cat_df_corr_matrix.empty)
-        self.assertIsInstance(cat_df_corr_figure, matplotlib.figure.Figure)
+        self.assertIsNone(cat_df_corr_matrix)
+        self.assertIsNone(cat_df_corr_figure)
 
 if __name__ == '__main__':
     unittest.main()

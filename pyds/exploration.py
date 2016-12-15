@@ -37,7 +37,7 @@ def describe(X, y=None, **kwargs):
     return num_description, cat_description
 
 
-def hist(X, y=None, **kwargs):
+def dist_plot(X, y=None, **kwargs):
     """
     given a pandas DataFrame plots a histogram for each numeric columns
     if a by=column keyword is passed splits the groups according to other column
@@ -58,14 +58,13 @@ def hist(X, y=None, **kwargs):
     for i, col in enumerate(numerical_cols):
         numerical_figures.append(plt.figure(i))
         plt.suptitle(col)
-        df[col].hist(**kwargs)
+        sns.distplot(df[col])
 
     # categorical columns histogram plotting
     for i, col in enumerate(categorical_cols):
         categorical_figures.append(plt.figure(i))
         plt.suptitle(col)
         df[col].value_counts().dropna().plot(kind='bar')
-
     return numerical_figures, categorical_figures
 
 
@@ -82,18 +81,17 @@ def box_plot(X, y=None):
     df = X.copy()
     if y is not None:
         df[y.name] = y
+    numerical_figure, categorical_figure = None, None
     numerical_cols = df.select_dtypes(include=[np.number]).columns
     categorical_cols = df.select_dtypes(include=['category']).columns
-    numerical_figure = plt.figure()
-    sns.boxplot(x="distance", y="method", data=df[numerical_cols],
-                whis=np.inf, color="c")
-    sns.stripplot(x="distance", y="method", data=df[numerical_cols],
-                  jitter=True, size=3, color=".3", linewidth=0)
-    categorical_figure = plt.figure()
-    sns.boxplot(x="distance", y="method", data=df[categorical_cols],
-                whis=np.inf, color="c")
-    sns.stripplot(x="distance", y="method", data=df[categorical_cols],
-                  jitter=True, size=3, color=".3", linewidth=0)
+    if len(numerical_cols) > 0:
+        numerical_figure = plt.figure()
+        sns.boxplot(data=df[numerical_cols], color="c")
+        sns.stripplot(data=df[numerical_cols], jitter=True, size=3, color=".3", linewidth=0)
+    if len(categorical_cols) > 0:
+        categorical_figure = plt.figure()
+        sns.boxplot(data=df[categorical_cols], color="c")
+        sns.stripplot(data=df[categorical_cols], jitter=True, size=3, color=".3", linewidth=0)
     return numerical_figure, categorical_figure
 
 
@@ -105,11 +103,10 @@ def scatter_plot(X, y, **kwargs):
     :param kwargs: passed to pandas.Series.plot
     """
     assert (isinstance(X, pd.DataFrame)) and (not X.empty), 'X should be a valid pandas DataFrame'
-    assert (isinstance(y, pd.Series)) and (not y.empty), 'X should be a valid pandas Series'
+    assert (isinstance(y, pd.Series)) and (not y.empty), 'y should be a valid pandas Series'
     df = X.copy()
     df[y.name] = y
-    scatter_mat = sns.pairplot(df, hue=y.name, diag_kind="kde", plot_kws=dict(s=50, edgecolor="b", linewidth=1),
-                               diag_kws=dict(shade=True), **kwargs)
+    scatter_mat = sns.pairplot(df, hue=y.name, diag_kind="kde", diag_kws=dict(shade=True), **kwargs)
     return scatter_mat
 
 
@@ -149,10 +146,12 @@ def correlations(X, y=None, size=constants.FIGURE_SIZE):
     :return: correlation matrix and figure representing the correlations
     """
     assert (isinstance(X, pd.DataFrame)) and (not X.empty), 'X should be a valid pandas DataFrame'
+    numerical_cols = X.select_dtypes(include=[np.number]).columns
+    if len(numerical_cols) == 0:
+        return None, None
     df = X.copy()
     if y is not None:
         df[y.name] = y
-    fig = plt.figure()
     corr = df.corr()
-    sns.clustermap(corr, linewidths=.5, figsize=(13, 13))
+    fig = sns.clustermap(corr, linewidths=.5, figsize=size)
     return corr, fig

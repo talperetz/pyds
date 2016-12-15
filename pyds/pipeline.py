@@ -123,7 +123,7 @@ def exec_offline_pipeline(train_paths, test_paths=None, target_column=None, colu
 
     # exploration
     num_description, cat_description = exploration.describe(X=X_train, y=y_train)
-    pipeline_results.save_exploration_results(num_description, cat_description, exploration.hist(X=X_train, y=y_train),
+    pipeline_results.save_exploration_results(num_description, cat_description, exploration.dist_plot(X=X_train, y=y_train),
                                               exploration.box_plot(X=X_train, y=y_train),
                                               exploration.contingency_table(X=X_train, y=y_train),
                                               exploration.correlations(X=X_train, y=y_train))
@@ -223,7 +223,7 @@ def low_mem_pipeline(train_paths, test_paths=None, target_column=None, columns_t
     # exploration
     num_description, cat_description = exploration.describe(X=X_train, pipeline_results=pipeline_results, y=y_train)
     pipeline_results.save_exploration_results(num_description, cat_description,
-                                              exploration.hist(X=X_train, pipeline_results=pipeline_results, y=y_train),
+                                              exploration.dist_plot(X=X_train, pipeline_results=pipeline_results, y=y_train),
                                               exploration.box_plot(X=X_train, pipeline_results=pipeline_results,
                                                                    y=y_train),
                                               exploration.contingency_table(X=X_train,
