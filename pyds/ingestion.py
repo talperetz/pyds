@@ -54,6 +54,7 @@ def _calc_optimal_chink_size():
     pass
 
 
+@DeprecationWarning
 def read_sparse(*args, **kwargs):
     """
     given a collection of file paths representing relational data

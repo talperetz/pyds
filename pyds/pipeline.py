@@ -6,7 +6,7 @@
 import logging
 import time
 
-from pyds import ingestion, exploration, transformations, cleaning, features_engineering, ml
+from pyds import ingestion, exploration, transformations, cleaning, features_engineering, ml, evaluation
 
 logger = logging.getLogger(__name__)
 
@@ -79,13 +79,6 @@ class PipelineResults:
         self.ml_results.scores = scores
         self.ml_results.clusterer_to_results = clusterer_to_results
         self.ml_results.scatter_plots = scatter_plots
-
-    def update_categorical_cols(self, new_cat_cols):
-        self.Ingestion.categorical_cols = new_cat_cols
-
-    def update_numerical_cols(self, new_num_cols):
-        self.Ingestion.numerical_cols = new_num_cols
-
 
 def exec_offline_pipeline(train_paths, test_paths=None, target_column=None, columns_to_clusterize=None,
                           n_clusters=None):
@@ -181,6 +174,7 @@ def exec_offline_pipeline(train_paths, test_paths=None, target_column=None, colu
         # classification problem
         if target_column in pipeline_results.ingestion_results.categorical_cols:
             best_model, predictions_df, score = ml.classify(ml_ready_X_train, ml_ready_X_test, ml_ready_y_train)
+            clf_evaluation = evaluation.evaluate_classification(best_model)
             logger.info('finished classification')
         # regression problem
         else:
@@ -195,86 +189,5 @@ def exec_offline_pipeline(train_paths, test_paths=None, target_column=None, colu
     pipeline_results.save_models(best_model, predictions_df, score, clusterer_to_results, scatter_plots)
     logger.info('ml process is finished\n after %s seconds\n best model: \n%s\n score:\n%s\n\n' % (
         (time.time() - ml_start_time), best_model, score))
-
-    return pipeline_results
-
-
-def low_mem_pipeline(train_paths, test_paths=None, target_column=None, columns_to_clusterize=None,
-                     columns_to_reduce_d=None, n_clusters=None, n_components=None):
-    pipeline_results = PipelineResults()
-
-    # load data, validate, infer and adjust columns types
-    try:
-        train_df = ingestion.read_sparse(train_paths)
-    except MemoryError:
-        # todo:
-        pass
-
-    ingestion.validate_dataset(train_df)
-    X_train, X_test, y_train, y_test, is_supervised = ingestion.get_train_test_splits(train_paths, test_paths,
-                                                                                      target_column)
-    numerical_columns, categorical_columns, id_columns, cols_to_convert_cat = \
-        ingestion.infer_columns_statistical_types(X_train, y_train)
-    X_train, X_test, y_train, y_test = ingestion.adjust_columns_types(cols_to_convert_cat, X_train, X_test, y_train,
-                                                                      y_test)
-    pipeline_results.save_ingestion_results(X_train, X_test, y_train, y_test, numerical_columns, categorical_columns,
-                                            id_columns)
-
-    # exploration
-    num_description, cat_description = exploration.describe(X=X_train, pipeline_results=pipeline_results, y=y_train)
-    pipeline_results.save_exploration_results(num_description, cat_description,
-                                              exploration.dist_plot(X=X_train, pipeline_results=pipeline_results, y=y_train),
-                                              exploration.box_plot(X=X_train, pipeline_results=pipeline_results,
-                                                                   y=y_train),
-                                              exploration.contingency_table(X=X_train,
-                                                                            pipeline_results=pipeline_results,
-                                                                            y=y_train),
-                                              exploration.correlations(X=X_train, y=y_train))
-
-    # cleaning
-    X_train_without_ids = cleaning.remove_id_columns(X_train, id_columns)
-    filled_X_train, na_rows, imputation = cleaning.fill_missing_values(X_train_without_ids, pipeline_results)
-    outliers = cleaning.detect_outliers(filled_X_train, pipeline_results, y=y_train)
-    cleaned_X_train = filled_X_train.drop(outliers, axis=0)
-    ml_ready_y_train = y_train.drop(outliers, axis=0)
-    pipeline_results.save_cleaning_results(na_rows, imputation, outliers)
-
-    # features engineering
-    transformed_X_train, num_transformations, cat_transformations = \
-        transformations.preprocess_train_columns(cleaned_X_train, pipeline_results, update_columns_types=True)
-    X_train_with_new_features, created_features = features_engineering.create_features(transformed_X_train,
-                                                                                       ml_ready_y_train,
-                                                                                       pipeline_results)
-    ml_ready_X_train, selected_features = features_engineering.select_features(X_train_with_new_features,
-                                                                               ml_ready_y_train)
-    pipeline_results.save_features(num_transformations, cat_transformations, created_features, selected_features)
-
-    # transform X_test as X_train
-    X_test_cols_to_drop = set(id_columns).intersection(X_test.columns.tolist())
-    if X_test_cols_to_drop:
-        X_test.drop(X_test_cols_to_drop, axis=1, inplace=True)
-    transformed_X_test = transformations.preprocess_test_columns(X_test, pipeline_results)
-    X_test_with_new_features, _ = features_engineering.create_features(transformed_X_test,
-                                                                       y_test,
-                                                                       pipeline_results)
-    ml_ready_X_test = X_test_with_new_features[selected_features]
-
-    # ML
-    best_model, predictions_df, scores, clusterer_to_results = (None for _ in range(4))
-    # supervised problem
-    if is_supervised:
-        # classification problem
-        if target_column in pipeline_results.Ingestion.categorical_cols:
-            best_model, predictions_df, scores = ml.classify(ml_ready_X_train, ml_ready_X_test, ml_ready_y_train,
-                                                             y_test)
-        # regression problem
-        else:
-            best_model, predictions_df, scores = ml.regress(ml_ready_X_train, ml_ready_X_test, ml_ready_y_train,
-                                                            y_test)
-    # unsupervised problem
-    else:
-        clusterer_to_results = ml.create_clusters(ml_ready_X_train, columns_to_clusterize, n_clusters)
-    scatter_plots = exploration.scatter_plot(ml_ready_X_train, ml_ready_y_train)
-    pipeline_results.save_models(best_model, predictions_df, scores, clusterer_to_results, scatter_plots)
 
     return pipeline_results
