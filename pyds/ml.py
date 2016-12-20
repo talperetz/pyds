@@ -6,13 +6,9 @@
 """
 
 import math
-from collections import defaultdict, Counter
 
-import hdbscan
 import pandas as pd
-from hyperopt import fmin, rand, hp
 from orangecontrib.associate.fpgrowth import association_rules, frequent_itemsets, rules_stats
-from sklearn import metrics
 from sklearn.cluster import KMeans, SpectralClustering, MiniBatchKMeans, DBSCAN, AffinityPropagation
 from sklearn.decomposition import PCA, KernelPCA
 from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis
@@ -212,51 +208,6 @@ def regress(X_train, X_test, y_train, scoring='neg_mean_squared_error'):
     return best_model, best_model.predict(X_test), best_model.best_score
 
 
-def _analyze_clusters(X, labels_pred, algorithm_name, labels_true=None):
-    """
-    given pandas DataFrame and labels of each point returns dictionary of cluster_num to list of cluster items.
-    :param X: pandas DataFrame
-    :param labels_pred: numpy.ndarray with clustering labels of each point
-    :param labels_true: numpy.ndarray with real labels of each point
-    :return: dictionary {cluster_num: [cluster_item_1, ..., cluster_item_n]}
-    """
-    n_clusters_ = len(set(labels_pred)) - (1 if -1 in labels_pred else 0)
-    clustering_metrics_df = pd.Series(data=None,
-                                      index=['items', 'size', 'real_label_to_frequency'].extend(
-                                          constants.CLUSTERING_METRICS),
-                                      name=algorithm_name,
-                                      columns=['cluster %s' % i for i in n_clusters_])
-
-    # build dictionary of cluster_label to cluster_items
-    cluster_num_to_items_in_cluster = defaultdict(list)
-    cluster_num_to_real_labels_in_cluster = defaultdict(list)
-    for i, cluster_label in enumerate(labels_pred):
-        cluster_num_to_items_in_cluster[cluster_label].append(X[i])
-        if labels_true:
-            cluster_num_to_real_labels_in_cluster[cluster_label].append(labels_true[i])
-
-    # fill clustering_metrics values
-    for cluster_label in cluster_num_to_items_in_cluster:
-
-        # add meta data
-        cluster_size = len(cluster_items)
-        cluster_items = cluster_num_to_items_in_cluster[cluster_label]
-        clustering_metrics_df.loc['items', 'cluster %s' % cluster_label] = cluster_items
-        clustering_metrics_df.loc['size', 'cluster %s' % cluster_label] = cluster_size
-        if labels_true:
-
-            # add {label_true: label_frequency}
-            clustering_metrics_df.loc['real_label_to_frequency', 'cluster %s' % cluster_label] = {
-                cluster_num: real_labels_count / float(cluster_size) for cluster_num, real_labels_count in
-                dict(Counter(cluster_num_to_real_labels_in_cluster[cluster_label])).iteritems()}
-
-            # add sklearn clustering quality metrics
-            for metric in constants.CLUSTERING_METRICS:
-                clustering_metrics_df.loc[metric, 'cluster %s' % cluster_label] = getattr(metrics, metric)(labels_true,
-                                                                                                           labels_pred)
-    return clustering_metrics_df
-
-
 def create_clusters(df, cluster_cols, n_clusters=None, labels_true=None):
     """
     given a dataframe, relevant columns for clustering and num of clusters [optional]
@@ -273,30 +224,23 @@ def create_clusters(df, cluster_cols, n_clusters=None, labels_true=None):
     """
     assert (isinstance(df, pd.DataFrame)) and (not df.empty), 'df should be a valid pandas DataFrame'
     X = df[cluster_cols]
-    clustering_names, clustering_algorithms, clusterer_to_results = set(), set(), dict()
+    clustering_algorithms = set()
     if n_clusters is not None:
         if len(df.index) > 10000:
             k_means = KMeans(n_clusters=n_clusters).fit(X)
             spectral = SpectralClustering(n_clusters=n_clusters, eigen_solver='arpack',
                                           affinity="nearest_neighbors").fit(X)
             mixture = GaussianMixture(n_components=n_clusters, covariance_type='full').fit(X)
-            clustering_names.update(['K-Means', 'SpectralClustering', 'GaussianMixture'])
             clustering_algorithms.update([k_means, spectral, mixture])
         else:
             mini_k_means = MiniBatchKMeans(init='k-means++', n_clusters=n_clusters,
                                            n_init=10, max_no_improvement=10, verbose=0).fit(X)
-            clustering_names.add("MiniBatchKMeans")
             clustering_algorithms.add(mini_k_means)
     else:
         dbs = DBSCAN(eps=0.3, min_samples=10).fit(X)
         af = AffinityPropagation().fit(X)
-        clustering_names.update(["DBSCAN", "AffinityPropagation"])
         clustering_algorithms.update([dbs, af])
-    for name, clusterer in zip(clustering_names, clustering_algorithms):
-        labels_pred = clusterer.labels_
-        metrics_ = _analyze_clusters(X, labels_pred, name, labels_true)
-        clusterer_to_results[clusterer] = name, labels_pred, metrics_
-    return clusterer_to_results
+    return clustering_algorithms
 
 
 def reduce_dimensions(df, reduce_cols=None, n_components=2):
@@ -315,30 +259,25 @@ def reduce_dimensions(df, reduce_cols=None, n_components=2):
     assert (isinstance(df, pd.DataFrame)) and (not df.empty), 'df should be a valid pandas DataFrame'
     if reduce_cols:
         assert (set(reduce_cols).issubset(set(df.columns.tolist()))) and (
-                len(df[reduce_cols].index) > 0), "reduce_cols must be a subset of df columns"
+            len(df[reduce_cols].index) > 0), "reduce_cols must be a subset of df columns"
         X = df[reduce_cols].copy()
     else:
         X = df.copy()
-    reductions_names, reductions_algorithms = set(), set()
-
+    reductions_algorithms, reducer_to_results = set(), dict()
     pca = PCA(n_components=n_components, svd_solver='randomized')
-    reductions_names.add("PCA")
     reductions_algorithms.add(pca)
     if len(X.index) > 10000:
         k_pca = KernelPCA(kernel="rbf", fit_inverse_transform=True, gamma=10)
-        reductions_names.add("KernelPCA")
         reductions_algorithms.add(k_pca)
     else:
         n_neighbors = 10
         isomap = Isomap(n_components=n_components, n_neighbors=n_neighbors)
         se = SpectralEmbedding(n_components=n_components, n_neighbors=n_neighbors)
         lle = LocallyLinearEmbedding(n_components=n_components, n_neighbors=n_neighbors, method='standard')
-        reductions_names.update(["Isomap", "SpectralEmbedding", "LocallyLinearEmbedding"])
         reductions_algorithms.update([isomap, se, lle])
-    reducer_to_results = {}
-    for name, reducer in zip(reductions_names, reductions_algorithms):
+    for reducer in reductions_algorithms:
         reduced_df = reducer.fit_transform(X)
-        reducer_to_results[reducer] = name, reduced_df
+        reducer_to_results[reducer.__name__] = reduced_df
     return reducer_to_results
 
 
@@ -362,9 +301,16 @@ def associate_rules(df, min_support, min_confidence):
     :links: http://aimotion.blogspot.co.il/2013/01/machine-learning-and-data-mining.html, https://github.com/biolab/orange3-associate
     """
     assert (isinstance(df, pd.DataFrame)) and (not df.empty), 'df should be a valid pandas DataFrame'
-    matrix = df.to_matrix()
-    itemsets = frequent_itemsets(matrix, min_support)
+    matrix = df.as_matrix()
+    matrix_col_to_df_col = dict(zip(range(matrix.shape[1]), df.columns.tolist()))
+    itemsets = dict(frequent_itemsets(matrix, min_support))
     rules = list(association_rules(itemsets, min_confidence))
+    # todo:
+    rules = ()
+    for ante, cons, supp, conf in rules:
+        print(' & '.join(matrix_col_to_df_col[i] for i in ante), ' --> ',
+              matrix_col_to_df_col[next(iter(cons))],
+              '(supp: {}, conf: {})'.format(supp, conf))
     rstats = list(rules_stats(rules, itemsets, df.shape[0]))
     rules_df = pd.DataFrame(data=rstats, columns=['antecedent', 'consequent', 'support', 'confidence', 'coverage',
                                                   'strength', 'lift', 'leverage'])
