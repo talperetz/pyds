@@ -4,15 +4,14 @@
 :TL;DR: this module is responsible for univariate and bi-variate analysis
 """
 
-import pandas as pd
-from matplotlib import pyplot as plt
-import seaborn as sns
-
-sns.set_style("whitegrid")
 import numpy as np
+import pandas as pd
+import seaborn as sns
+from matplotlib import pyplot as plt
 
 from pyds import constants
-from pyds import ml
+
+sns.set_style("whitegrid")
 
 
 def describe(X, y=None, **kwargs):
@@ -29,6 +28,7 @@ def describe(X, y=None, **kwargs):
     categorical_cols = X.select_dtypes(include=['category']).columns
     num_description, cat_description = None, None
     if y is not None:
+        assert (isinstance(y, pd.Series)) and (not y.empty), 'y should be a valid pandas Series'
         df[y.name] = y
     if len(numerical_cols) > 0:
         num_description = df[numerical_cols].describe(**kwargs)
@@ -50,6 +50,7 @@ def dist_plot(X, y=None, **kwargs):
     numerical_figures, categorical_figures = [], []
     df = X.copy()
     if y is not None:
+        assert (isinstance(y, pd.Series)) and (not y.empty), 'y should be a valid pandas Series'
         df[y.name] = y
     numerical_cols = X.select_dtypes(include=[np.number]).columns
     categorical_cols = X.select_dtypes(include=['category']).columns
@@ -57,14 +58,15 @@ def dist_plot(X, y=None, **kwargs):
     # numerical columns histogram plotting
     for i, col in enumerate(numerical_cols):
         numerical_figures.append(plt.figure(i))
-        plt.suptitle(col)
-        sns.distplot(df[col])
+        sns.distplot(df[col], **kwargs)
+        plt.suptitle(str(col) + ' Distribution', fontsize=20)
 
     # categorical columns histogram plotting
     for i, col in enumerate(categorical_cols):
         categorical_figures.append(plt.figure(i))
-        plt.suptitle(col)
-        df[col].value_counts().dropna().plot(kind='bar')
+        df[col].value_counts().dropna().plot(kind='bar', **kwargs)
+        plt.suptitle(str(col) + ' Distribution', fontsize=20)
+    plt.show()
     return numerical_figures, categorical_figures
 
 
@@ -80,6 +82,7 @@ def box_plot(X, y=None):
     assert (isinstance(X, pd.DataFrame)) and (not X.empty), 'X should be a valid pandas DataFrame'
     df = X.copy()
     if y is not None:
+        assert (isinstance(y, pd.Series)) and (not y.empty), 'y should be a valid pandas Series'
         df[y.name] = y
     numerical_figure, categorical_figure = None, None
     numerical_cols = df.select_dtypes(include=[np.number]).columns
@@ -88,25 +91,32 @@ def box_plot(X, y=None):
         numerical_figure = plt.figure()
         sns.boxplot(data=df[numerical_cols], color="c")
         sns.stripplot(data=df[numerical_cols], jitter=True, size=3, color=".3", linewidth=0)
+        plt.suptitle('Raw Numerical Features', fontsize=20)
     if len(categorical_cols) > 0:
         categorical_figure = plt.figure()
         sns.boxplot(data=df[categorical_cols], color="c")
         sns.stripplot(data=df[categorical_cols], jitter=True, size=3, color=".3", linewidth=0)
+        plt.suptitle('Raw Categorical Features', fontsize=20)
     return numerical_figure, categorical_figure
 
 
-def scatter_plot(X, y, **kwargs):
+def scatter_plot(X, y=None, **kwargs):
     """
     given a pandas DataFrame without categorical data plots scatterplot of the data for each
     reducer in ml.reduce_dimensions()
+    :param y: [pandas Series] target column
     :param X: [pandas DataFrame] predictor columns without categorical data
     :param kwargs: passed to pandas.Series.plot
     """
     assert (isinstance(X, pd.DataFrame)) and (not X.empty), 'X should be a valid pandas DataFrame'
-    assert (isinstance(y, pd.Series)) and (not y.empty), 'y should be a valid pandas Series'
     df = X.copy()
-    df[y.name] = y
-    scatter_mat = sns.pairplot(df, hue=y.name, diag_kind="kde", diag_kws=dict(shade=True), **kwargs)
+    if y is not None:
+        assert (isinstance(y, pd.Series)) and (not y.empty), 'y should be a valid pandas Series'
+        df[y.name] = y
+        scatter_mat = sns.pairplot(df, hue=y.name, diag_kind="kde", diag_kws=dict(shade=True), **kwargs)
+    else:
+        scatter_mat = sns.pairplot(df, diag_kind="kde", diag_kws=dict(shade=True), **kwargs)
+    plt.suptitle('Raw Features Scatter Matrix', fontsize=20)
     return scatter_mat
 
 
@@ -137,7 +147,7 @@ def contingency_table(X, y=None):
     return contingency_tables
 
 
-def correlations(X, y=None, size=constants.FIGURE_SIZE):
+def correlations(X, y=None):
     """
     given a pandas DataFrame returns correlation matrix and figure representing the correlations
     :param y: [pandas Series] target column
@@ -153,5 +163,6 @@ def correlations(X, y=None, size=constants.FIGURE_SIZE):
     if y is not None:
         df[y.name] = y
     corr = df.corr()
-    fig = sns.clustermap(corr, linewidths=.5, figsize=size)
+    fig = sns.clustermap(corr, linewidths=.5, figsize=constants.FIGURE_SIZE)
+    plt.suptitle('Raw Features Correlation', fontsize=20)
     return corr, fig
