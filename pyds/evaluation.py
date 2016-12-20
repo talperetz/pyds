@@ -3,24 +3,22 @@
 :Date: 15/12/2016
 :TL;DR: this module is responsible for the ML model evaluation
 """
-import pandas as pd
-import matplotlib.pyplot as plt
-import numpy as np
-
 from collections import Counter, defaultdict
-from pyds import constants
+
+import matplotlib.pyplot as plt
+import pandas as pd
+import seaborn as sns
 from sklearn import metrics
-
-from sklearn.metrics import confusion_matrix
 from sklearn.metrics import classification_report
-from sklearn.metrics import roc_curve
-
+from sklearn.metrics import confusion_matrix
 from sklearn.metrics import mean_absolute_error
 from sklearn.metrics import mean_squared_error
 from sklearn.metrics import median_absolute_error
 from sklearn.metrics import r2_score
+from sklearn.metrics import roc_curve
 
-import seaborn as sns
+from pyds import constants
+
 sns.set_style("whitegrid")
 
 
@@ -47,11 +45,13 @@ def evaluate_classification(y_true, y_pred, target_names=None):
     plt.ylim([0, 1])
     plt.ylabel('True Positive Rate')
     plt.xlabel('False Positive Rate')
+    plt.suptitle('ROC', fontsize=20)
 
     # plot confusion matrix
     plt.figure()
     plt.ylabel('True Labels')
     plt.xlabel('Predicted Labels')
+    plt.suptitle('Confusion Matrix', fontsize=20)
     cm_fig = sns.heatmap(cm, annot=True, xticklabels=target_names, yticklabels=target_names)
     return cr, cm_fig, roc_fig
 
@@ -62,14 +62,12 @@ def evaluate_regression(y_true, y_pred):
     returns mean_absolute_error, mean_squared_error, median_absolute_error and r_squared_score
     :param y_true: array of ground truth (correct) target values
     :param y_pred: array of estimated targets as returned by a regressor
-    :param target_names: Optional display names matching the labels (same order)
     :return: mean_absolute_error, mean_squared_error, median_absolute_error and r_squared_score
     """
     mean_abs_err = mean_absolute_error(y_true, y_pred)
     mse = mean_squared_error(y_true, y_pred)
     med_abs_err = median_absolute_error(y_true, y_pred)
     r_squared = r2_score(y_true, y_pred)
-
     return mean_abs_err, mse, med_abs_err, r_squared
 
 
@@ -86,7 +84,7 @@ def evaluate_clusters(X, labels_pred, algorithm_name, labels_true=None):
                                       index=['items', 'size', 'real_label_to_frequency'].extend(
                                           constants.CLUSTERING_METRICS),
                                       name=algorithm_name,
-                                      columns=['cluster %s' % i for i in n_clusters_])
+                                      columns=['cluster %s' % i for i in range(n_clusters_)])
 
     # build dictionary of cluster_label to cluster_items
     cluster_num_to_items_in_cluster = defaultdict(list)
@@ -100,8 +98,8 @@ def evaluate_clusters(X, labels_pred, algorithm_name, labels_true=None):
     for cluster_label in cluster_num_to_items_in_cluster:
 
         # add meta data
-        cluster_size = len(cluster_items)
         cluster_items = cluster_num_to_items_in_cluster[cluster_label]
+        cluster_size = len(cluster_items)
         clustering_metrics_df.loc['items', 'cluster %s' % cluster_label] = cluster_items
         clustering_metrics_df.loc['size', 'cluster %s' % cluster_label] = cluster_size
         if labels_true:
@@ -109,7 +107,7 @@ def evaluate_clusters(X, labels_pred, algorithm_name, labels_true=None):
             # add {label_true: label_frequency}
             clustering_metrics_df.loc['real_label_to_frequency', 'cluster %s' % cluster_label] = {
                 cluster_num: real_labels_count / float(cluster_size) for cluster_num, real_labels_count in
-                dict(Counter(cluster_num_to_real_labels_in_cluster[cluster_label])).iteritems()}
+                dict(Counter(cluster_num_to_real_labels_in_cluster[cluster_label])).items()}
 
             # add sklearn clustering quality metrics
             for metric in constants.CLUSTERING_METRICS:
