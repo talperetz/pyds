@@ -80,6 +80,40 @@ class PipelineResults:
         self.ml_results.clusterer_to_results = clusterer_to_results
         self.ml_results.scatter_plots = scatter_plots
 
+
+def explore(train_paths):
+    pipeline_results = PipelineResults()
+
+    # load data, validate, infer and adjust columns types
+    train_df = ingestion.read(train_paths)
+    logger.info('loaded train data from %s successfully' % train_paths)
+    ingestion.validate_dataset(train_df)
+    X_train, X_test, y_train, y_test, is_supervised = ingestion.get_train_test_splits(train_df)
+    logger.info(
+        'split data to train and test sets: \nX_train shape - %s \nX_test shape - %s' % (
+            X_train.shape, X_test.shape))
+    numerical_columns, categorical_columns, id_columns = \
+        ingestion.infer_columns_statistical_types(X_train, y_train)
+    X_train, X_test, y_train, y_test = ingestion.adjust_columns_types(categorical_columns, X_train, X_test, y_train,
+                                                                      y_test)
+    logger.info('columns types inferred: \nid - %s \n categorical - %s \n numerical - %s' % (
+        id_columns, categorical_columns, numerical_columns))
+    pipeline_results.save_ingestion_results(X_train, X_test, y_train, y_test, numerical_columns, categorical_columns,
+                                            id_columns)
+
+    # exploration
+    num_description, cat_description = exploration.describe(X=X_train, y=y_train)
+    pipeline_results.save_exploration_results(num_description, cat_description,
+                                              exploration.dist_plot(X=X_train, y=y_train),
+                                              exploration.box_plot(X=X_train, y=y_train),
+                                              exploration.contingency_table(X=X_train, y=y_train),
+                                              exploration.correlations(X=X_train, y=y_train))
+    logger.info(
+        'exploration results are ready: \n numerical columns description - \n%s \n categorical columns description -\n%s'
+        % (num_description, cat_description))
+    return pipeline_results.exploration_results
+
+
 def exec_offline_pipeline(train_paths, test_paths=None, target_column=None, columns_to_clusterize=None,
                           n_clusters=None):
     """
@@ -113,16 +147,6 @@ def exec_offline_pipeline(train_paths, test_paths=None, target_column=None, colu
         id_columns, categorical_columns, numerical_columns))
     pipeline_results.save_ingestion_results(X_train, X_test, y_train, y_test, numerical_columns, categorical_columns,
                                             id_columns)
-
-    # exploration
-    num_description, cat_description = exploration.describe(X=X_train, y=y_train)
-    pipeline_results.save_exploration_results(num_description, cat_description, exploration.dist_plot(X=X_train, y=y_train),
-                                              exploration.box_plot(X=X_train, y=y_train),
-                                              exploration.contingency_table(X=X_train, y=y_train),
-                                              exploration.correlations(X=X_train, y=y_train))
-    logger.info(
-        'exploration results are ready: \n numerical columns description - \n%s \n categorical columns description -\n%s'
-        % (num_description, cat_description))
 
     # cleaning
     X_train_without_ids = cleaning.remove_id_columns(X_train, id_columns)
