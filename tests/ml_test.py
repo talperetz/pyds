@@ -69,12 +69,6 @@ class PipelineTestCase(unittest.TestCase):
         # todo: check the returning values
         pass
 
-    def test_associate_rules(self):
-        hr_df = data_generators.get_hr_dataset()
-        rules_df = ml.associate_rules(hr_df, 0.3, 0.7)
-        print(rules_df)
-        pass
-
     def test_detect_anomalies(self):
         # todo: generate dataframes
         outliers = ml.detect_anomalies_with_isolation_forest()

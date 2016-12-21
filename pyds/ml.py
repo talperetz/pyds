@@ -281,7 +281,7 @@ def reduce_dimensions(df, reduce_cols=None, n_components=2):
     return reducer_to_results
 
 
-def associate_rules(df, min_support, min_confidence):
+def associate_rules(df, min_support, min_confidence, rule_max_len=None, rules_consequents=None):
     """
     given a pandas DataFrame, minimum support level and minimum confidence level
     returns dataframe with rules and statistics.
@@ -291,6 +291,8 @@ def associate_rules(df, min_support, min_confidence):
     Frequent item sets are simply a collection of items that frequently occur together.
     And association rules suggest a strong relationship that exists between two items.
 
+    :param rules_consequents: collection that holds the desired original columns that would serve as rule consequent
+    :param rule_max_len: int maximum length for antecedent (num of participating values)
     :param df: pandas DataFrame
     :param min_support: (float or int) – If float in range (0, 1), percent of minimal support for itemset to be considered
     frequent. If int > 1, the absolute number of instances. For example, general iterators don’t have defined length,
@@ -305,13 +307,27 @@ def associate_rules(df, min_support, min_confidence):
     matrix_col_to_df_col = dict(zip(range(matrix.shape[1]), df.columns.tolist()))
     itemsets = dict(frequent_itemsets(matrix, min_support))
     rules = list(association_rules(itemsets, min_confidence))
-    # todo:
-    rules = ()
-    for ante, cons, supp, conf in rules:
-        print(' & '.join(matrix_col_to_df_col[i] for i in ante), ' --> ',
-              matrix_col_to_df_col[next(iter(cons))],
-              '(supp: {}, conf: {})'.format(supp, conf))
+
+    # filter rules by rules length
+    if rule_max_len:
+        rules = [(P, Q, supp, conf)
+                 for P, Q, supp, conf in association_rules(itemsets, .8)
+                 if len(Q) == rule_max_len]
+
     rstats = list(rules_stats(rules, itemsets, df.shape[0]))
+
+    # replace columns positions with the columns names
+    rstats = (
+        (' & '.join(matrix_col_to_df_col[i] for i in rule[0]), matrix_col_to_df_col[next(iter(rule[1]))], rule[2],
+         rule[3], rule[4], rule[5], rule[6], rule[7])
+        for rule in rstats)
+
+    # filter rules where consequent is in rules_consequents
+    if rules_consequents:
+        rstats = (rule for rule in rstats if any(
+            consequent in matrix_col_to_df_col[next(iter(rule[1]))] for consequent in
+            rules_consequents))
+
     rules_df = pd.DataFrame(data=rstats, columns=['antecedent', 'consequent', 'support', 'confidence', 'coverage',
                                                   'strength', 'lift', 'leverage'])
     return rules_df

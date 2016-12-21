@@ -215,3 +215,44 @@ def exec_offline_pipeline(train_paths, test_paths=None, target_column=None, colu
         (time.time() - ml_start_time), best_model, score))
 
     return pipeline_results
+
+
+def associate_rules_pipeline(df, min_support, min_confidence, rule_max_len=None, rules_consequents=None):
+    """
+    given data and arguments describing the data
+    this function runs a full pipeline and returns it's result in a PipelineResults object
+    :param train_paths: [list of str] full paths for training data
+    :param test_paths: [list of str] full paths for test data
+    :param target_column: [str] the name of the target variable column
+    :param columns_to_clusterize: [list of str] names of columns to cluster the data upon
+    :param columns_to_reduce_d: [list of str] names of columns to reduce dimensions upon
+    :param n_clusters: [int] number of clusters in data if known
+    :param n_components: [int] number of desired dimensions
+    :return: pipeline results object holding all results from the process
+    """
+
+    # load data, validate, infer and adjust columns types
+    if rules_consequents:
+        assert all(consequent in df.columns for consequent in
+                   rules_consequents), 'consequents should be names of desired original columns'
+    ingestion.validate_dataset(df)
+    numerical_columns, categorical_columns, id_columns = \
+        ingestion.infer_columns_statistical_types(df)
+    df[categorical_columns] = df[categorical_columns].apply(lambda num_col: num_col.astype('category'))
+    logger.info('columns types inferred: \nid - %s \n categorical - %s \n numerical - %s' % (
+        id_columns, categorical_columns, numerical_columns))
+
+    # cleaning
+    df_without_ids = cleaning.remove_id_columns(df, id_columns)
+    logger.info('id columns removed')
+    filled_df, na_rows, imputation = cleaning.fill_missing_values(df_without_ids)
+    logger.info('filled %s missing values on train set \n %s' % (len(na_rows.index), imputation.head()))
+
+    # preprocessing
+    transformed_df = transformations.preprocess_for_association_rules(filled_df)
+    logger.info('categorical and numerical columns transformed')
+
+    # run association rules
+    result_df = ml.associate_rules(transformed_df, min_support, min_confidence, rule_max_len=rule_max_len,
+                                   rules_consequents=rules_consequents)
+    return result_df

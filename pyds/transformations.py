@@ -97,15 +97,16 @@ def _transform_numerical_columns(train_numerical_df, col_to_scaler=defaultdict(M
     return transformed_numerical_df, col_to_scaler
 
 
-def discretize(numerical_df, col_to_width_edges=None, col_to_depth_edges=None):
+def discretize(numerical_df, col_to_width_edges=None, col_to_depth_edges=None, name_labels=False):
     """
     given a numerical dataframe returns equal width and equal depth labeled dataframes and their bins dict
+    :param name_labels: boolean indicates whether to put string labels or int labels
     :param numerical_df: pandas DataFrame of numerical attributes
     :param col_to_width_edges: used when you want preset bins
     :param col_to_depth_edges: used when you want preset bins
     :return: equal_width_num_df, col_to_width_edges, equal_depth_num_df, col_to_depth_edges
     """
-    assert (isinstance(numerical_df, pd.DataFrame)) and (not numerical_df.empty),\
+    assert (isinstance(numerical_df, pd.DataFrame)) and (not numerical_df.empty), \
         'numerical_df should be a valid pandas DataFrame'
     is_edges_recieved = True
     if (not col_to_width_edges) and (not col_to_depth_edges):
@@ -115,7 +116,8 @@ def discretize(numerical_df, col_to_width_edges=None, col_to_depth_edges=None):
     for col_name, col in numerical_df.iteritems():
         num_of_bins = _calc_optimal_num_of_bins(col)
         if is_edges_recieved and (col_name in col_to_width_edges.keys()) and (col_name in col_to_depth_edges.keys()):
-            equal_width_col = pd.cut(col, bins=col_to_width_edges[col_name], labels=False)
+            equal_width_col = pd.cut(col, bins=col_to_width_edges[col_name]) if name_labels else pd.cut(col, bins=
+            col_to_width_edges[col_name], labels=False)
             equal_width_col.name = 'equal_w_%s' % col_name
             equal_width_num_df.loc[:, equal_width_col.name] = equal_width_col
             equal_depth_col, _ = _pct_rank_qcut(col, num_of_bins, edges=col_to_depth_edges[col_name])
@@ -123,7 +125,11 @@ def discretize(numerical_df, col_to_width_edges=None, col_to_depth_edges=None):
             equal_depth_num_df.loc[:, equal_depth_col.name] = equal_depth_col
         else:
             if num_of_bins > 1:
-                equal_width_col, col_to_width_edges[col_name] = pd.cut(col, num_of_bins, labels=False, retbins=True)
+                equal_width_col, col_to_width_edges[col_name] = pd.cut(col, num_of_bins,
+                                                                       retbins=True) if name_labels else pd.cut(col,
+                                                                                                                num_of_bins,
+                                                                                                                labels=False,
+                                                                                                                retbins=True)
                 equal_width_col.name = 'equal_w_%s' % col_name
                 equal_width_num_df.loc[:, equal_width_col.name] = equal_width_col
                 equal_depth_col, col_to_depth_edges[col_name] = _pct_rank_qcut(col, num_of_bins)
@@ -203,6 +209,38 @@ def preprocess_test_columns(X_test, train_transformations):
                                                                    col_to_scaler=train_transformations.col_to_scaler)
     transformed_df = pd.concat([scaled_numerical_df, dummiefied_categorical_df], axis=1)
     return transformed_df
+
+
+def preprocess_for_association_rules(X):
+    """
+    given a pandas DataFrame and a PipelineResults object
+    returns a dataframe with columns ready for an ML model , categorical transformations list,
+    numerical transformations list
+    :param col_to_scaler: numerical scaler to apply on each of the numerical columns
+    :param X: pandas DataFrame
+    :param pipeline_results: class: 'PipelineResults'
+    :return: dataframe with columns ready for an ML model, categorical transformations list,
+    numerical transformations list
+    """
+    assert (isinstance(X, pd.DataFrame)) and (not X.empty), 'X_train should be a valid pandas DataFrame'
+    numerical_cols = X.select_dtypes(include=[np.number]).columns
+    categorical_cols = X.select_dtypes(include=['category']).columns
+    is_numerical = len(numerical_cols) > 0
+    is_categorical = len(categorical_cols) > 0
+    dummiefied_categorical_df = pd.DataFrame()
+
+    # discretization of numerical columns
+    if is_numerical:
+        numerical_df = X.loc[:, numerical_cols]
+        equal_width_num_df, col_to_width_edges, equal_depth_num_df, col_to_depth_edges = discretize(numerical_df,
+                                                                                                    name_labels=True)
+
+    if is_categorical:
+        categorical_df = pd.concat([X.loc[:, categorical_cols], equal_width_num_df], axis=1)
+        # assume there is no order - dummify categorical data
+        dummiefied_categorical_df = pd.get_dummies(categorical_df)  # , prefix=categorical_df.columns.tolist()
+        dummiefied_categorical_df = dummiefied_categorical_df.apply(lambda col: col.astype('category'))
+    return dummiefied_categorical_df
 
 
 @DeprecationWarning
