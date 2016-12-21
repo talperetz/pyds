@@ -8,13 +8,14 @@
 
 import os
 import unittest
+
 import numpy as np
 
 from pyds import transformations, constants
 from tests import data_generators
 
 
-class PipelineTestCase(unittest.TestCase):
+class TransformationsTestCase(unittest.TestCase):
     logger = None
     is_warnings_traced = False
 

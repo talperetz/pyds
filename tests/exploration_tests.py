@@ -9,16 +9,16 @@
 import os
 import unittest
 
-import seaborn as sns
 import matplotlib
 import pandas as pd
+import seaborn as sns
 from sklearn.datasets import load_diabetes
 
 from pyds import exploration, constants
 from tests import data_generators
 
 
-class PipelineTestCase(unittest.TestCase):
+class ExplorationTestCase(unittest.TestCase):
     logger = None
     is_warnings_traced = False
     cat_and_num_X = None

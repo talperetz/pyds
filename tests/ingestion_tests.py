@@ -12,7 +12,7 @@ import unittest
 from pyds import ingestion, constants
 
 
-class PipelineTestCase(unittest.TestCase):
+class IngestionTestCase(unittest.TestCase):
     logger = None
     is_warnings_traced = False
 

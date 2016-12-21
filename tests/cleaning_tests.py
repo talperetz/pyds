@@ -16,7 +16,7 @@ from tests import data_generators
 from tests import tests_constants
 
 
-class PipelineTestCase(unittest.TestCase):
+class CleaningTestCase(unittest.TestCase):
     logger = None
     is_warnings_traced = False
 

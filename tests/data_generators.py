@@ -92,3 +92,8 @@ def get_hr_dataset():
     df.sales = df.sales.astype('category')
     df.salary = df.salary.astype('category')
     return df
+
+
+def get_titanic_dataset():
+    df = pd.read_csv("../resources/datasets/Titanic/train.csv")
+    return df

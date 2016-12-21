@@ -15,7 +15,7 @@ from pyds import features_engineering, constants
 from tests import data_generators
 
 
-class PipelineTestCase(unittest.TestCase):
+class FeatureEngineeringTestCase(unittest.TestCase):
     logger = None
     is_warnings_traced = False
 

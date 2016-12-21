@@ -12,7 +12,7 @@ import unittest
 from pyds import nlp, constants
 
 
-class PipelineTestCase(unittest.TestCase):
+class NLPTestCase(unittest.TestCase):
     logger = None
     is_warnings_traced = False
 

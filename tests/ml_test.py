@@ -16,7 +16,7 @@ from pyds import ml, constants
 from tests import data_generators, tests_constants
 
 
-class PipelineTestCase(unittest.TestCase):
+class MLTestCase(unittest.TestCase):
     logger = None
     is_warnings_traced = False
 
