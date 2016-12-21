@@ -74,7 +74,7 @@ def validate_dataset(df):
     assert len(df.index) > 50, 'there are not enough samples to make a decent analysis'
 
 
-def get_train_test_splits(train_df, test_paths, target_column):
+def get_train_test_splits(train_df, target_column, test_paths=None):
     assert target_column in train_df.columns, "target column doesn't exist on train set"
     y_train = train_df[target_column]
     X_train = train_df.drop(target_column, axis=1)
