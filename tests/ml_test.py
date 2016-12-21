@@ -10,6 +10,7 @@ import os
 import unittest
 
 import numpy as np
+import pandas as pd
 from sklearn.model_selection import train_test_split
 
 from pyds import ml, constants
@@ -41,7 +42,7 @@ class MLTestCase(unittest.TestCase):
             warnings.showwarning = warn_with_traceback
 
     def test_classify(self):
-        # todo: generate dataframe with numerical values
+        # todo: generate dataframes
         best_model, predictions, best_score = ml.classify()
         # todo: check the returning values
         pass
@@ -59,18 +60,23 @@ class MLTestCase(unittest.TestCase):
         centers = [[1, 1], [-1, -1], [1, -1]]
         densities = [0.2, 0.35, 0.5]
         X, labels_true = data_generators.make_var_density_blobs(n_samples=750, centers=centers, cluster_std=densities)
-        clusterer_to_results = ml.create_clusters()
-        # todo: check the returning values
+        clustering_algorithms = ml.create_clusters(X, X.columns.tolist(), n_clusters=3)
+        self.assertTrue(clustering_algorithms != set())
+        clustering_algorithms = ml.create_clusters(X, X.columns.tolist())
+        self.assertTrue(clustering_algorithms != set())
+
+        print(clustering_algorithms)
         pass
 
     def test_reduce_dimensions(self):
-        # todo: generate dataframes
-        reducer_to_results = ml.reduce_dimensions()
-        # todo: check the returning values
-        pass
+        df = data_generators.generate_random_data(100, 5)
+        reducer_to_results = ml.reduce_dimensions(df)
+        self.assertTrue(reducer_to_results != {})
+        for reducer, results in reducer_to_results.items():
+            self.assertIsInstance(results, pd.DataFrame)
+            self.assertGreaterEqual(len(df.columns), len(results.columns))
 
     def test_detect_anomalies(self):
-        # todo: generate dataframes
         outliers = ml.detect_anomalies_with_isolation_forest()
         # todo: check the returning values
         pass

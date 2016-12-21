@@ -208,7 +208,7 @@ def regress(X_train, X_test, y_train, scoring='neg_mean_squared_error'):
     return best_model, best_model.predict(X_test), best_model.best_score
 
 
-def create_clusters(df, cluster_cols, n_clusters=None, labels_true=None):
+def create_clusters(df, cluster_cols, n_clusters=None):
     """
     given a dataframe, relevant columns for clustering and num of clusters [optional]
     returns a dictionary of clustering algorithm to it's name, labels and metrics.
@@ -276,8 +276,8 @@ def reduce_dimensions(df, reduce_cols=None, n_components=2):
         lle = LocallyLinearEmbedding(n_components=n_components, n_neighbors=n_neighbors, method='standard')
         reductions_algorithms.update([isomap, se, lle])
     for reducer in reductions_algorithms:
-        reduced_df = reducer.fit_transform(X)
-        reducer_to_results[reducer.__name__] = reduced_df
+        reduced_df = pd.DataFrame(reducer.fit_transform(X))
+        reducer_to_results[reducer.__class__.__name__] = reduced_df
     return reducer_to_results
 
 
