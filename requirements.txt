@@ -1,7 +1,6 @@
 seaborn
 hdbscan
 hyperopt
-pyqt5
 pandas
 matplotlib
 sklearn
