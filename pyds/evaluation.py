@@ -3,49 +3,54 @@
 :Date: 15/12/2016
 :TL;DR: this module is responsible for the ML model evaluation
 """
+
 from collections import Counter, defaultdict
 
 import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
 from sklearn import metrics
-from sklearn.metrics import classification_report
-from sklearn.metrics import confusion_matrix
-from sklearn.metrics import mean_absolute_error
-from sklearn.metrics import mean_squared_error
-from sklearn.metrics import median_absolute_error
-from sklearn.metrics import r2_score
-from sklearn.metrics import roc_curve
+from sklearn.metrics import roc_curve, auc, classification_report, confusion_matrix, mean_absolute_error, \
+    mean_squared_error, median_absolute_error, r2_score
+from sklearn.preprocessing import label_binarize
 
 from pyds import constants
 
 sns.set_style("whitegrid")
 
 
-def evaluate_classification(y_true, y_pred, target_names=None):
+def evaluate_classification(y_true, y_pred, target_values, y_scores=None):
     """
     given array of correct target values, array of estimated targets and classes names
     returns confusion matrix, classification report and roc curve
     :param y_true: array of ground truth (correct) target values
     :param y_pred: array of estimated targets as returned by a classifier
-    :param target_names: Optional display names matching the labels (same order)
+    :param target_values: Optional display names matching the labels (same order)
     :return: classification report, confusion matrix figure, roc figure
     """
-    if target_names is None:
-        target_names = [str(i) for i in range(len(y_true))]
+    roc_fig = None
+    target_names = [str(val) for val in target_values]
     cm = confusion_matrix(y_true, y_pred)
     cr = classification_report(y_true, y_pred, target_names=target_names)
 
-    # plot roc
-    fpr, tpr, thresholds = roc_curve(y_true, y_pred, pos_label=2)
-    roc_auc = metrics.auc(fpr, tpr)
-    roc_fig = plt.plot(fpr, tpr, label='AUC = %0.2f' % roc_auc)
-    plt.legend(loc='lower right')
-    plt.xlim([0, 1])
-    plt.ylim([0, 1])
-    plt.ylabel('True Positive Rate')
-    plt.xlabel('False Positive Rate')
-    plt.suptitle('ROC', fontsize=20)
+    # build multiclass ROC
+    if y_scores is not None:
+        # plot roc
+        y = label_binarize(y_true, classes=target_values)
+
+        # Compute ROC curve and ROC area for each class
+        for i, class_name in enumerate(target_names):
+            fpr, tpr, _ = roc_curve(y[:, i], y_scores[:, i])
+            roc_auc = auc(fpr, tpr)
+            plt.plot(fpr, tpr, lw=4, label='ROC curve of class {0} (area = {1:0.2f})'
+                                           ''.format(class_name, roc_auc))
+        roc_fig = plt.plot([0, 1], [0, 1], color='navy', lw=1, linestyle='--', label='Random Model')
+        plt.xlim([0.0, 1.0])
+        plt.ylim([0.0, 1.05])
+        plt.xlabel('False Positive Rate')
+        plt.ylabel('True Positive Rate')
+        plt.title('ROC', fontsize=20)
+        plt.legend(loc="lower right")
 
     # plot confusion matrix
     plt.figure()
@@ -71,10 +76,10 @@ def evaluate_regression(y_true, y_pred):
     return mean_abs_err, mse, med_abs_err, r_squared
 
 
-def evaluate_clusters(X, labels_pred, algorithm_name, labels_true=None):
+def evaluate_clusters(labels_pred, algorithm_name, labels_true=None):
     """
     given pandas DataFrame and labels of each point returns dictionary of cluster_num to list of cluster items.
-    :param X: pandas DataFrame
+    :param algorithm_name: string for clustering algorithm name
     :param labels_pred: numpy.ndarray with clustering labels of each point
     :param labels_true: numpy.ndarray with real labels of each point
     :return: dictionary {cluster_num: [cluster_item_1, ..., cluster_item_n]}
