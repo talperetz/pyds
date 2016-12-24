@@ -11,13 +11,16 @@ import unittest
 
 import numpy as np
 import pandas as pd
+from sklearn.datasets import make_classification, make_regression
 from sklearn.model_selection import train_test_split
 
-from pyds import ml, constants
+from pyds import constants
 from tests import data_generators, tests_constants
 
 
 class MLTestCase(unittest.TestCase):
+    classification_X, classification_y = None, None
+    regression_X, regression_y = None, None
     logger = None
     is_warnings_traced = False
 
@@ -41,22 +44,37 @@ class MLTestCase(unittest.TestCase):
         if self.is_warnings_traced:
             warnings.showwarning = warn_with_traceback
 
+        temp_X, temp_y = make_classification(n_features=20, n_redundant=3, n_samples=1000, n_informative=8,
+                                             random_state=1, n_clusters_per_class=1, n_classes=4)
+        self.classification_X, self.classification_y = pd.DataFrame(temp_X), pd.Series(temp_y)
+        # , bias=0.7, tail_strength=0.5, noise=0.05
+        temp_X, temp_y = make_regression(n_samples=1000, n_features=20, n_informative=10, n_targets=1)
+        self.regression_X, self.regression_y = pd.DataFrame(temp_X), pd.Series(temp_y)
+
     def test_classify(self):
-        # todo: generate dataframes
-        best_model, predictions, best_score = ml.classify()
-        # todo: check the returning values
-        pass
+        from pyds import ml
+        self.logger.info("start classify")
+        X_train, X_test, y_train, y_test = train_test_split(self.classification_X, self.classification_y,
+                                                            test_size=constants.TEST_SPLIT_SIZE)
+        best_model, predictions, best_score = ml.classify(X_train, X_test, y_train)
+        self.logger.info("best model : \n %s" % best_model)
+        self.logger.info("predictions : \n %s" % predictions)
+        self.logger.info("best score : \n %s" % best_score)
+        self.assertIsNotNone(best_model)
+        self.assertIsInstance(predictions, np.ndarray)
+        self.assertGreater(best_score, tests_constants.CLASSIFICATION_SCORE_THRESHOLD)
 
     def test_regress(self):
-        X = data_generators.generate_random_data(1000, 15)
-        y = (0.3 * X[0] + X[1] + X[2] - 2 * X[3]) * 0.2
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=constants.TEST_SPLIT_SIZE)
+        from pyds import ml
+        X_train, X_test, y_train, y_test = train_test_split(self.regression_X, self.regression_y,
+                                                            test_size=constants.TEST_SPLIT_SIZE)
         best_model, predictions, best_score = ml.regress(X_train, X_test, y_train)
         self.assertIsNotNone(best_model)
         self.assertIsInstance(predictions, np.ndarray)
         self.assertGreater(best_score, tests_constants.REGRESSION_SCORE_THRESHOLD)
 
     def test_create_clusters(self):
+        from pyds import ml
         centers = [[1, 1], [-1, -1], [1, -1]]
         densities = [0.2, 0.35, 0.5]
         X, labels_true = data_generators.make_var_density_blobs(n_samples=750, centers=centers, cluster_std=densities)
@@ -65,10 +83,8 @@ class MLTestCase(unittest.TestCase):
         clustering_algorithms = ml.create_clusters(X, X.columns.tolist())
         self.assertTrue(clustering_algorithms != set())
 
-        print(clustering_algorithms)
-        pass
-
     def test_reduce_dimensions(self):
+        from pyds import ml
         df = data_generators.generate_random_data(100, 5)
         reducer_to_results = ml.reduce_dimensions(df)
         self.assertTrue(reducer_to_results != {})
@@ -77,9 +93,14 @@ class MLTestCase(unittest.TestCase):
             self.assertGreaterEqual(len(df.columns), len(results.columns))
 
     def test_detect_anomalies(self):
-        outliers = ml.detect_anomalies_with_isolation_forest()
-        # todo: check the returning values
-        pass
+        from pyds import ml
+        centers = [[1, 1], [-1, -1], [1, -1]]
+        densities = [0.2, 0.35, 0.5]
+        X, labels_true = data_generators.make_var_density_blobs(n_samples=750, centers=centers, cluster_std=densities)
+        if_outliers = ml.detect_anomalies_with_isolation_forest(X, contamination=tests_constants.CONTAMINATION)
+        hdb_outliers = ml.detect_anomalies_with_hdbscan(X, contamination=tests_constants.CONTAMINATION)
+        self.assertAlmostEquals(len(if_outliers), tests_constants.CONTAMINATION * X.shape[0])
+        self.assertAlmostEquals(len(hdb_outliers), tests_constants.CONTAMINATION * X.shape[0])
 
 
 if __name__ == '__main__':
