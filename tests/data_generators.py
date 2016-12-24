@@ -57,7 +57,7 @@ def generate_id_cols(n_rows, n_cols, rand_low=0, rand_high=100, col_names=None):
 def generate_empty_values(df, frac=0.3):
     """
     given a pandas DataFrame and the desired proportion of empty to filled values
-    returns the pandas DataFrame with
+    returns the pandas DataFrame with frac percents empty cells
     :param df: pandas DataFrame
     :param frac: the desired proportion of empty to filled values
     :return: pandas DataFrame with frac percents empty cells
@@ -88,12 +88,27 @@ def make_var_density_blobs(n_samples=750, centers=[[0, 0]], cluster_std=[0.5]):
 
 
 def get_hr_dataset():
+    """
+    :return: kagglr HR 10 rows dataset with two categorical columns
+    """
     df = pd.DataFrame(tests_constants.KAGGLE_HR_DATASET)
     df.sales = df.sales.astype('category')
     df.salary = df.salary.astype('category')
     return df
 
 
+def get_hebrew_mixed_hr_dataset():
+    """
+    :return: kagglr HR 10 rows dataset with two categorical columns and one hebrew column
+    """
+    df = pd.DataFrame(tests_constants.HEB_KAGGLE_HR_DATASET)
+    df.sales = df.sales.astype('category')
+    return df
+
+
 def get_titanic_dataset():
+    """
+    :return: titanic dataset
+    """
     df = pd.read_csv("../resources/datasets/Titanic/train.csv")
     return df
