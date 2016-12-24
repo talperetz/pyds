@@ -150,6 +150,7 @@ def preprocess_train_columns(X_train, col_to_scaler=defaultdict(MinMaxScaler), X
     numerical transformations list
     """
     assert (isinstance(X_train, pd.DataFrame)) and (not X_train.empty), 'X_train should be a valid pandas DataFrame'
+    col_to_width_edges, col_to_depth_edges = None, None
     numerical_cols = X_train.select_dtypes(include=[np.number]).columns
     categorical_cols = X_train.select_dtypes(include=['category']).columns
     is_numerical = len(numerical_cols) > 0
