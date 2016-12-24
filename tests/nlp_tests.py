@@ -9,7 +9,10 @@
 import os
 import unittest
 
+import pandas as pd
+
 from pyds import nlp, constants
+from tests import data_generators
 
 
 class NLPTestCase(unittest.TestCase):
@@ -37,10 +40,9 @@ class NLPTestCase(unittest.TestCase):
             warnings.showwarning = warn_with_traceback
 
     def test_decode_cols(self):
-        # todo: generate dataframe with numerical values
-        df = nlp.decode_cols()
-        # todo: check the returning values
-        pass
+        df = data_generators.get_hebrew_mixed_hr_dataset()
+        decoded_df = nlp.decode_cols(df, language='he', decode_columns='משכורת')
+        self.assertIsInstance(decoded_df, pd.DataFrame)
 
 
 if __name__ == '__main__':

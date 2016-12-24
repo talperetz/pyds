@@ -5,6 +5,7 @@
 """
 
 import pandas as pd
+
 from pyds import constants
 
 
@@ -18,7 +19,15 @@ def decode_cols(X, language, decode_columns=None):
     :return: X where columns are decoded according to desired language
     """
     assert (isinstance(X, pd.DataFrame)) and (not X.empty), 'X should be a valid pandas DataFrame'
-    assert language in constants.LANGUAGE_TO_ENCODING.keys(), \
+    assert language.lower() in constants.LANGUAGE_TO_ENCODING.keys(), \
         'supported languages are %s' % constants.LANGUAGE_TO_ENCODING.keys()
-    df = X[decode_columns].copy() if decode_columns else X.copy()
-    return df.apply(lambda col: df[col].str.decode(constants.LANGUAGE_TO_ENCODING[language.lower()]))
+    df = X.copy()
+    if decode_columns is not None:
+        if isinstance(df[decode_columns], pd.Series):
+            df[decode_columns] = df[decode_columns].str.decode(constants.LANGUAGE_TO_ENCODING[language.lower()])
+        else:
+            df[decode_columns] = df.apply(
+                lambda col: df[col].str.decode(constants.LANGUAGE_TO_ENCODING[language.lower()]))
+    else:
+        df = df.apply(lambda col: df[col].str.decode(constants.LANGUAGE_TO_ENCODING[language.lower()]))
+    return df
