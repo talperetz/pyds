@@ -5,9 +5,11 @@
 :Links: https://www.analyticsvidhya.com/blog/2015/01/scikit-learn-python-machine-learning-tool/
 """
 
-import math
+import logging
 
+import hdbscan
 import pandas as pd
+from hyperopt import fmin, hp, tpe, Trials
 from orangecontrib.associate.fpgrowth import association_rules, frequent_itemsets, rules_stats
 from sklearn.cluster import KMeans, SpectralClustering, MiniBatchKMeans, DBSCAN, AffinityPropagation
 from sklearn.decomposition import PCA, KernelPCA
@@ -29,6 +31,8 @@ from sklearn.tree import DecisionTreeClassifier
 
 from pyds import constants
 
+logger = logging.getLogger(__name__)
+
 
 class MLModel:
     """
@@ -43,13 +47,14 @@ class MLModel:
         self.implementation = implementation
         self.param_space = param_space
 
-    def _hyperopt_function(self, params):
+    def _score_model(self, params):
         model = self.implementation(**params)
-        score_to_max = cross_val_score(model, self.X, self.y, scoring=self.scoring).mean()
-        score_to_min = -1 * score_to_max
+        cv_score = cross_val_score(model, self.X, self.y, cv=constants.K_FOR_K_FOLD_VALIDATION, scoring=self.scoring)
+        score_to_min = -1 * cv_score.mean()
+        # logger.info(score_to_min)
         return score_to_min
 
-    def optimize(self, X_train, y_train, scoring, max_evals=500):
+    def optimize(self, X_train, y_train, scoring, max_evals=100):
         """
         given a loss function find the params [in the param_space] that minimize it
         and update the best_params, best_score and implementation to use best_params
@@ -62,9 +67,11 @@ class MLModel:
         self.X = X_train
         self.y = y_train
         self.scoring = scoring
-        self.best_params = fmin(self._hyperopt_function, self.param_space,
-                                algo=rand.suggest, max_evals=max_evals)
-        self.best_score = self._hyperopt_function(self.best_params)
+        trials = Trials()
+        self.best_params = fmin(self._score_model, self.param_space,
+                                algo=tpe.suggest, max_evals=max_evals, trials=trials)
+        self.best_score = abs(self._score_model(self.best_params))
+        logger.info('model %s best score: %s' % (self.name, self.best_score))
         self.implementation = self.implementation(**self.best_params)
         return self
 
@@ -97,40 +104,41 @@ def classify(X_train, X_test, y_train, scoring='accuracy'):
     assert (isinstance(X_test, pd.DataFrame)) and (not X_test.empty), 'X_test should be a valid pandas DataFrame'
     assert (isinstance(y_train, pd.Series)) and (not y_train.empty), 'y_train should be a valid pandas Series'
     # models configurations
-    num_of_features = len(X_train.columns)
+    # num_of_features = len(X_train.columns)
     knn = MLModel('KNeighborsClassifier', KNeighborsClassifier, param_space={
-        'n_neighbors': hp.choice('n_neighbors', range(1, 50)),
-        'weights': hp.choice('weights', ['uniform', 'distance']),
-        'leaf_size': hp.choice('leaf_size', range(1, 50)),
+        'n_neighbors': hp.quniform('n_neighbors', 1, 50, 1),
+        # 'weights': hp.choice('weights', ['uniform', 'distance']),
+        'leaf_size': hp.quniform('leaf_size', 2, 50, 2)
     })
     svc = MLModel('SVC', SVC, param_space={
-        'C': hp.uniform('C', 0, 20),
-        'kernel': hp.choice('kernel', ['linear', 'sigmoid', 'poly', 'rbf']),
-        'gamma': hp.uniform('gamma', 0, 20),
-        'degree': hp.choice('degree', range(1, 5))
+        # 'C': hp.quniform('C', 1, 20, 2),
+        # 'kernel': hp.choice('kernel', ['linear', 'sigmoid', 'poly', 'rbf']),
+        # 'gamma': hp.quniform('gamma', 0, 20, 2),
+        'degree': hp.quniform('degree', 1, 5, 1)
     })
     gp = MLModel('GaussianProcessClassifier', GaussianProcessClassifier, param_space={
-        'warm_start': hp.choice('warm_start', [True, False])
+        'warm_start': hp.choice('warm_start', [0, 1])
     })
     rf = MLModel('RandomForestClassifier', RandomForestClassifier, param_space={
-        'max_depth': hp.choice('max_depth', range(1, 20)),
-        'max_features': hp.choice('max_features', [int(math.sqrt(num_of_features) / 2.0),
-                                                   int(math.sqrt(num_of_features)),
-                                                   int(2 * math.sqrt(num_of_features))]),
-        'n_estimators': hp.choice('n_estimators', [100, 500, 1000, 2000]),
-        'criterion': hp.choice('criterion', ["gini", "entropy"])
+        'max_depth': hp.quniform('max_depth', 1, 20, 2),
+        # 'max_features': hp.quniform('max_features', int(math.sqrt(num_of_features) / 2.0),
+        #                             int(2 * math.sqrt(num_of_features)), 2),
+        'n_estimators': 100
+        # 'n_estimators': hp.choice('n_estimators', [100, 500, 1000, 2000]),
+        # 'criterion': hp.choice('criterion', ["gini", "entropy"])
     })
     tree = MLModel('DecisionTreeClassifier', DecisionTreeClassifier, param_space={
-        'max_depth': hp.choice('max_depth', range(3, 5)),
-        'min_samples_split': hp.choice('min_samples_split', [10, 50]),
-        'min_samples_leaf': hp.choice('min_samples_leaf', [1, 5, 10])
+        'max_depth': hp.uniform('max_depth', 3, 5),
+        'min_samples_split': hp.quniform('min_samples_split', 10, 50, 2),
+        'min_samples_leaf': hp.quniform('min_samples_leaf', 1, 10, 2)
+        # 'criterion': hp.choice('criterion', ["gini", "entropy"])
     })
     mlp = MLModel('MLPClassifier', MLPClassifier, param_space={
-        'hidden_layer_sizes': hp.choice('hidden_layer_sizes', [50, 100, 500]),
+        'hidden_layer_sizes': hp.quniform('hidden_layer_sizes', 100, 500, 100),
         'alpha': hp.choice('alpha', [0.0001, 0.1])
     })
     ada = MLModel('AdaBoostClassifier', AdaBoostClassifier, param_space={
-        'n_estimators': hp.choice('n_estimators', [100, 500, 1000])
+        'n_estimators': 100
     })
     gnb = MLModel('GaussianNB', GaussianNB, param_space={
         'priors': None
@@ -140,7 +148,7 @@ def classify(X_train, X_test, y_train, scoring='accuracy'):
     })
 
     # models competition
-    competing_models = [knn, svc, gp, tree, rf, mlp, ada, gnb, qda]
+    competing_models = [knn, svc, gp, tree, mlp, ada, gnb, qda, rf]
     model_to_best_score = {model: model.optimize(X_train=X_train, y_train=y_train, scoring=scoring).best_score for model
                            in
                            competing_models}
@@ -168,40 +176,41 @@ def regress(X_train, X_test, y_train, scoring='neg_mean_squared_error'):
     # models configurations
     num_of_features = len(X_train.columns)
     sgd = MLModel('SGDRegressor', SGDRegressor, {
-        'loss': hp.choice('loss', ['squared_epsilon_insensitive', 'huber']),
-        'warm_start': hp.choice('warm_start', [False, True])
+        'loss': hp.choice('loss', ['squared_epsilon_insensitive', 'huber'])
     })
     lasso = MLModel('Lasso', Lasso, {
         'alpha': hp.uniform('alpha', 0.2, 2.0)
     })
     enet = MLModel('ElasticNet', ElasticNet, {
         'alpha': hp.uniform('alpha', 0.2, 2.5),
-        'normalize': hp.choice('normalize', [False, True])
+        'normalize': hp.choice('normalize', [0, 1])
     })
     ridge = MLModel('Ridge', Ridge, {
         'alpha': hp.uniform('alpha', 0.2, 2.5),
-        'normalize': hp.choice('normalize', [False, True])
+        'normalize': hp.choice('normalize', [0, 1])
     })
     svr = MLModel('SVR', SVR, {
-        'C': hp.uniform('C', 0, 20),
-        'kernel': hp.choice('kernel', ['linear', 'sigmoid', 'poly', 'rbf']),
-        'gamma': hp.uniform('gamma', 0, 20),
-        'degree': hp.choice('degree', range(1, 5))
+        'C': hp.quniform('C', 2, 20, 2),
+        # 'kernel': hp.choice('kernel', ['linear', 'sigmoid', 'poly', 'rbf']),
+        # 'gamma': hp.quniform('gamma', 1, 20, 1),
+        'degree': hp.quniform('degree', 1, 5, 1)
     })
     gbr = MLModel('GradientBoostingRegressor', GradientBoostingRegressor, {
-        'n_estimators': hp.choice('n_estimators', [100, 500, 1000, 2000])
+
+        # 'n_estimators': hp.choice('n_estimators', [100, 500, 1000, 2000])
+        'n_estimators': 100
     })
     rf_regressor = MLModel('RandomForestRegressor', RandomForestRegressor, {
-        'max_depth': hp.choice('max_depth', [1, 5, 10, 20]),
-        'max_features': hp.choice('max_features', [int(math.sqrt(num_of_features) / 2.0),
-                                                   int(math.sqrt(num_of_features)),
-                                                   int(2 * math.sqrt(num_of_features))]),
-        'n_estimators': hp.choice('n_estimators', [100, 500, 1000, 2000]),
-        'criterion': hp.choice('criterion', ["gini", "entropy"])
+        'max_depth': hp.quniform('max_depth', 2, 20, 2),
+        # 'max_features': hp.choice('max_features', [int(math.sqrt(num_of_features) / 2.0),
+        #                                            int(math.sqrt(num_of_features)),
+        #                                            int(2 * math.sqrt(num_of_features))]),
+        # 'criterion': hp.choice('criterion', ["gini", "entropy"]),
+        'n_estimators': 100
     })
 
     # models competition
-    competing_models = [lasso, enet, ridge, svr, gbr]
+    competing_models = [rf_regressor, svr, sgd]
     model_to_best_score = {model: model.optimize(X_train=X_train, y_train=y_train, scoring=scoring).best_score for model
                            in competing_models}
     best_model = max(model_to_best_score, key=model_to_best_score.get)
