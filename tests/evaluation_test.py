@@ -57,7 +57,6 @@ class EvaluationTestCase(unittest.TestCase):
         y_scores = clf.predict_proba(X)
         cr, cm_fig, roc_fig = evaluation.evaluate_classification(y_true, y_pred, y.unique(),
                                                                  y_scores=y_scores)
-        matplotlib.pyplot.show()
         self.assertIsInstance(cr, str)
         self.assertIsInstance(cm_fig, matplotlib.axes._axes.Axes)
         self.assertIsInstance(roc_fig, list)
