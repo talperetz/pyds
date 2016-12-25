@@ -1,6 +1,5 @@
 seaborn
 hdbscan
-hyperopt
 pandas
 matplotlib
 sklearn
