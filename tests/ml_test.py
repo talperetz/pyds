@@ -56,22 +56,30 @@ class MLTestCase(unittest.TestCase):
         self.logger.info("start classify")
         X_train, X_test, y_train, y_test = train_test_split(self.classification_X, self.classification_y,
                                                             test_size=constants.TEST_SPLIT_SIZE)
-        best_model, predictions, best_score = ml.classify(X_train, X_test, y_train)
+        best_model, predictions, best_score, models_comparison_df = ml.classify(X_train, X_test, y_train)
         self.logger.info("best model : \n %s" % best_model)
         self.logger.info("predictions : \n %s" % predictions)
         self.logger.info("best score : \n %s" % best_score)
+        self.logger.info("models comparison : \n %s" % models_comparison_df)
         self.assertIsNotNone(best_model)
+        self.assertIsInstance(models_comparison_df, pd.DataFrame)
         self.assertIsInstance(predictions, np.ndarray)
         self.assertGreater(best_score, tests_constants.CLASSIFICATION_SCORE_THRESHOLD)
 
     def test_regress(self):
         from pyds import ml
+        self.logger.info("start regression")
         X_train, X_test, y_train, y_test = train_test_split(self.regression_X, self.regression_y,
                                                             test_size=constants.TEST_SPLIT_SIZE)
-        best_model, predictions, best_score = ml.regress(X_train, X_test, y_train)
+        best_model, predictions, min_mse, models_comparison_df = ml.regress(X_train, X_test, y_train)
+        self.logger.info("best model : \n %s" % best_model)
+        self.logger.info("predictions : \n %s" % predictions)
+        self.logger.info("best score : \n %s" % min_mse)
+        self.logger.info("models comparison : \n %s" % models_comparison_df)
         self.assertIsNotNone(best_model)
+        self.assertIsInstance(models_comparison_df, pd.DataFrame)
         self.assertIsInstance(predictions, np.ndarray)
-        self.assertGreater(best_score, tests_constants.REGRESSION_SCORE_THRESHOLD)
+        self.assertGreater(tests_constants.REGRESSION_SCORE_THRESHOLD, min_mse)
 
     def test_create_clusters(self):
         from pyds import ml

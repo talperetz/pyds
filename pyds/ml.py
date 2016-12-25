@@ -6,11 +6,14 @@
 """
 
 import logging
+import math
+import random
+from time import time
 
 import hdbscan
 import pandas as pd
-from hyperopt import fmin, hp, tpe, Trials
 from orangecontrib.associate.fpgrowth import association_rules, frequent_itemsets, rules_stats
+from scipy.stats import randint as sp_randint
 from sklearn.cluster import KMeans, SpectralClustering, MiniBatchKMeans, DBSCAN, AffinityPropagation
 from sklearn.decomposition import PCA, KernelPCA
 from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis
@@ -21,7 +24,7 @@ from sklearn.gaussian_process import GaussianProcessClassifier
 from sklearn.linear_model import SGDRegressor, Lasso, ElasticNet, Ridge
 from sklearn.manifold import Isomap, SpectralEmbedding, LocallyLinearEmbedding
 from sklearn.mixture import GaussianMixture
-from sklearn.model_selection import cross_val_score
+from sklearn.model_selection import RandomizedSearchCV
 from sklearn.naive_bayes import GaussianNB
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.neural_network import MLPClassifier
@@ -47,43 +50,26 @@ class MLModel:
         self.implementation = implementation
         self.param_space = param_space
 
-    def _score_model(self, params):
-        model = self.implementation(**params)
-        cv_score = cross_val_score(model, self.X, self.y, cv=constants.K_FOR_K_FOLD_VALIDATION, scoring=self.scoring)
-        score_to_min = -1 * cv_score.mean()
-        # logger.info(score_to_min)
-        return score_to_min
-
-    def optimize(self, X_train, y_train, scoring, max_evals=100):
+    def optimize(self, X_train, y_train, scoring):
         """
         given a loss function find the params [in the param_space] that minimize it
         and update the best_params, best_score and implementation to use best_params
         :param y_train:
         :param X_train:
         :param scoring: string that controls what metric would the model use for evaluation
-        :param max_evals: limit to the num of evaluation
-        :param loss_func: function to minimize (for maximization negate function)
         """
         self.X = X_train
         self.y = y_train
         self.scoring = scoring
-        trials = Trials()
-        self.best_params = fmin(self._score_model, self.param_space,
-                                algo=tpe.suggest, max_evals=max_evals, trials=trials)
-        self.best_score = abs(self._score_model(self.best_params))
-        logger.info('model %s best score: %s' % (self.name, self.best_score))
-        self.implementation = self.implementation(**self.best_params)
-        return self
-
-    def predict(self, X_test):
-        """
-        given a pandas dataframe returns the model's predictions as np.array
-        :param X_test: test dataframe
-        :return: predictions as np.array
-        """
-        assert (self.X is not None) and (self.implementation is not None), "you should run optimize before predict"
-        model = self.implementation.fit(self.X, self.y)
-        return model.predict(X_test)
+        search_start_time = time()
+        rand_search = RandomizedSearchCV(self.implementation, param_distributions=self.param_space,
+                                         scoring=self.scoring, verbose=True)
+        rand_search.fit(X_train, y_train)
+        total_search_time = time() - search_start_time
+        logger.debug('model %s results: \n time: %s \n results: %s ' % (self.implementation.__class__.__name__,
+                                                                        total_search_time,
+                                                                        rand_search.cv_results_))
+        return rand_search, total_search_time
 
 
 def classify(X_train, X_test, y_train, scoring='accuracy'):
@@ -104,56 +90,59 @@ def classify(X_train, X_test, y_train, scoring='accuracy'):
     assert (isinstance(X_test, pd.DataFrame)) and (not X_test.empty), 'X_test should be a valid pandas DataFrame'
     assert (isinstance(y_train, pd.Series)) and (not y_train.empty), 'y_train should be a valid pandas Series'
     # models configurations
-    # num_of_features = len(X_train.columns)
-    knn = MLModel('KNeighborsClassifier', KNeighborsClassifier, param_space={
-        'n_neighbors': hp.quniform('n_neighbors', 1, 50, 1),
-        # 'weights': hp.choice('weights', ['uniform', 'distance']),
-        'leaf_size': hp.quniform('leaf_size', 2, 50, 2)
+    num_of_features = len(X_train.columns)
+    knn = MLModel('KNeighborsClassifier', KNeighborsClassifier(), param_space={
+        'n_neighbors': sp_randint(1, 50),
+        'weights': ['uniform', 'distance'],
+        'leaf_size': sp_randint(1, 50)
     })
-    svc = MLModel('SVC', SVC, param_space={
-        # 'C': hp.quniform('C', 1, 20, 2),
-        # 'kernel': hp.choice('kernel', ['linear', 'sigmoid', 'poly', 'rbf']),
-        # 'gamma': hp.quniform('gamma', 0, 20, 2),
-        'degree': hp.quniform('degree', 1, 5, 1)
+    svc = MLModel('SVC', SVC(), param_space={
+        'kernel': ['linear', 'sigmoid', 'poly', 'rbf'],
+        'degree': sp_randint(1, 5)
     })
-    gp = MLModel('GaussianProcessClassifier', GaussianProcessClassifier, param_space={
-        'warm_start': hp.choice('warm_start', [0, 1])
+    gp = MLModel('GaussianProcessClassifier', GaussianProcessClassifier(), param_space={
+        'warm_start': [0, 1],
+        'n_restarts_optimizer': [0, 5, 10]
     })
-    rf = MLModel('RandomForestClassifier', RandomForestClassifier, param_space={
-        'max_depth': hp.quniform('max_depth', 1, 20, 2),
-        # 'max_features': hp.quniform('max_features', int(math.sqrt(num_of_features) / 2.0),
-        #                             int(2 * math.sqrt(num_of_features)), 2),
-        'n_estimators': 100
-        # 'n_estimators': hp.choice('n_estimators', [100, 500, 1000, 2000]),
-        # 'criterion': hp.choice('criterion', ["gini", "entropy"])
+    rf = MLModel('RandomForestClassifier', RandomForestClassifier(n_estimators=100), param_space={
+        'max_depth': sp_randint(1, 20),
+        'max_features': sp_randint(int((math.sqrt(num_of_features) / 2.0) + 1), num_of_features),
+        'criterion': ["gini", "entropy"]
     })
-    tree = MLModel('DecisionTreeClassifier', DecisionTreeClassifier, param_space={
-        'max_depth': hp.uniform('max_depth', 3, 5),
-        'min_samples_split': hp.quniform('min_samples_split', 10, 50, 2),
-        'min_samples_leaf': hp.quniform('min_samples_leaf', 1, 10, 2)
-        # 'criterion': hp.choice('criterion', ["gini", "entropy"])
+    tree = MLModel('DecisionTreeClassifier', DecisionTreeClassifier(), param_space={
+        'max_depth': sp_randint(1, 20),
+        'max_features': sp_randint(int((math.sqrt(num_of_features) / 2.0) + 1), num_of_features),
+        'min_samples_split': sp_randint(10, 50, 2),
+        'min_samples_leaf': sp_randint(1, 10, 2),
+        'criterion': ["gini", "entropy"]
     })
-    mlp = MLModel('MLPClassifier', MLPClassifier, param_space={
-        'hidden_layer_sizes': hp.quniform('hidden_layer_sizes', 100, 500, 100),
-        'alpha': hp.choice('alpha', [0.0001, 0.1])
+    mlp = MLModel('MLPClassifier', MLPClassifier(), param_space={
+        'hidden_layer_sizes': sp_randint(100, 500),
+        'activation': ['identity', 'logistic', 'tanh', 'relu'],
+        'alpha': [random.uniform(0.0001, 1.0) for _ in range(5)]
     })
-    ada = MLModel('AdaBoostClassifier', AdaBoostClassifier, param_space={
-        'n_estimators': 100
+    ada = MLModel('AdaBoostClassifier', AdaBoostClassifier(n_estimators=100), param_space={
+        'base_estimator': [DecisionTreeClassifier(max_depth=1, min_samples_leaf=1),
+                           DecisionTreeClassifier(max_depth=9, min_samples_leaf=1)]
     })
-    gnb = MLModel('GaussianNB', GaussianNB, param_space={
+    gnb = MLModel('GaussianNB', GaussianNB(), param_space={
         'priors': None
     })
-    qda = MLModel('QuadraticDiscriminantAnalysis', QuadraticDiscriminantAnalysis, param_space={
+    qda = MLModel('QuadraticDiscriminantAnalysis', QuadraticDiscriminantAnalysis(), param_space={
         'priors': None
     })
 
     # models competition
-    competing_models = [knn, svc, gp, tree, mlp, ada, gnb, qda, rf]
-    model_to_best_score = {model: model.optimize(X_train=X_train, y_train=y_train, scoring=scoring).best_score for model
-                           in
-                           competing_models}
-    best_model = max(model_to_best_score, key=model_to_best_score.get)
-    return best_model, best_model.predict(X_test), best_model.best_score
+    competing_models = [knn, svc, tree, mlp, rf]
+    model_to_best_score = {}
+    models_comparison_df = pd.DataFrame(columns=['best_score', 'opt_time', 'best_params'])
+    for model in competing_models:
+        opt_results, search_time = model.optimize(X_train=X_train, y_train=y_train, scoring=scoring)
+        models_comparison_df.loc[
+            opt_results.best_estimator_.__class__.__name__] = opt_results.best_score_, search_time, opt_results.best_params_
+        model_to_best_score[opt_results.best_score_] = opt_results
+    best_model = model_to_best_score[max(model_to_best_score.keys())]
+    return best_model.best_estimator_, best_model.predict(X_test), best_model.best_score_, models_comparison_df
 
 
 def regress(X_train, X_test, y_train, scoring='neg_mean_squared_error'):
@@ -175,46 +164,53 @@ def regress(X_train, X_test, y_train, scoring='neg_mean_squared_error'):
     assert (isinstance(y_train, pd.Series)) and (not y_train.empty), 'y_train should be a valid pandas Series'
     # models configurations
     num_of_features = len(X_train.columns)
-    sgd = MLModel('SGDRegressor', SGDRegressor, {
-        'loss': hp.choice('loss', ['squared_epsilon_insensitive', 'huber'])
+    sgd = MLModel('SGDRegressor', SGDRegressor(), {
+        'loss': ['squared_epsilon_insensitive', 'huber'],
+        'l1_ratio': [random.uniform(0.15, 0.8) for _ in range(5)],
+        'penalty': ['none', 'l2', 'l1', 'elasticnet']
     })
-    lasso = MLModel('Lasso', Lasso, {
-        'alpha': hp.uniform('alpha', 0.2, 2.0)
+    lasso = MLModel('Lasso', Lasso(), {
+        'alpha': [random.uniform(0.2, 2.5) for _ in range(5)],
+        'normalize': [0, 1]
     })
-    enet = MLModel('ElasticNet', ElasticNet, {
-        'alpha': hp.uniform('alpha', 0.2, 2.5),
-        'normalize': hp.choice('normalize', [0, 1])
+    enet = MLModel('ElasticNet', ElasticNet(), {
+        'alpha': [random.uniform(0.2, 2.5) for _ in range(5)],
+        'normalize': [0, 1]
     })
-    ridge = MLModel('Ridge', Ridge, {
-        'alpha': hp.uniform('alpha', 0.2, 2.5),
-        'normalize': hp.choice('normalize', [0, 1])
+    ridge = MLModel('Ridge', Ridge(), {
+        'alpha': [random.uniform(0.2, 2.5) for _ in range(5)],
+        'normalize': [0, 1]
     })
-    svr = MLModel('SVR', SVR, {
-        'C': hp.quniform('C', 2, 20, 2),
-        # 'kernel': hp.choice('kernel', ['linear', 'sigmoid', 'poly', 'rbf']),
-        # 'gamma': hp.quniform('gamma', 1, 20, 1),
-        'degree': hp.quniform('degree', 1, 5, 1)
+    svr = MLModel('SVR', SVR(), {
+        'kernel': ['linear', 'sigmoid', 'poly', 'rbf'],
+        'degree': sp_randint(1, 5)
     })
-    gbr = MLModel('GradientBoostingRegressor', GradientBoostingRegressor, {
-
-        # 'n_estimators': hp.choice('n_estimators', [100, 500, 1000, 2000])
-        'n_estimators': 100
+    gbr = MLModel('GradientBoostingRegressor', GradientBoostingRegressor(n_estimators=100), {
+        'loss': ['ls', 'lad', 'huber', 'quantile'],
+        'max_depth': sp_randint(1, 10),
+        'min_samples_split': sp_randint(1, 10),
+        'min_samples_leaf': sp_randint(1, 10),
+        'max_features': ['auto', 'sqrt', 'log2']
     })
-    rf_regressor = MLModel('RandomForestRegressor', RandomForestRegressor, {
-        'max_depth': hp.quniform('max_depth', 2, 20, 2),
-        # 'max_features': hp.choice('max_features', [int(math.sqrt(num_of_features) / 2.0),
-        #                                            int(math.sqrt(num_of_features)),
-        #                                            int(2 * math.sqrt(num_of_features))]),
-        # 'criterion': hp.choice('criterion', ["gini", "entropy"]),
-        'n_estimators': 100
+    rf_regressor = MLModel('RandomForestRegressor', RandomForestRegressor(n_estimators=100), {
+        'max_depth': sp_randint(2, 20),
+        'min_samples_split': sp_randint(1, 10),
+        'min_samples_leaf': sp_randint(1, 10),
+        'max_features': sp_randint(int((math.sqrt(num_of_features) / 2.0) + 1), num_of_features),
+        'criterion': ["mse", "mae"]
     })
 
     # models competition
-    competing_models = [rf_regressor, svr, sgd]
-    model_to_best_score = {model: model.optimize(X_train=X_train, y_train=y_train, scoring=scoring).best_score for model
-                           in competing_models}
-    best_model = max(model_to_best_score, key=model_to_best_score.get)
-    return best_model, best_model.predict(X_test), best_model.best_score
+    competing_models = [rf_regressor, svr, lasso, enet, ridge, sgd, gbr]
+    model_to_best_score = {}
+    models_comparison_df = pd.DataFrame(columns=['best_score', 'opt_time', 'best_params'])
+    for model in competing_models:
+        opt_results, search_time = model.optimize(X_train=X_train, y_train=y_train, scoring=scoring)
+        models_comparison_df.loc[
+            opt_results.best_estimator_.__class__.__name__] = opt_results.best_score_, search_time, opt_results.best_params_
+        model_to_best_score[opt_results.best_score_] = opt_results
+    best_model = model_to_best_score[max(model_to_best_score.keys())]
+    return best_model.best_estimator_, best_model.predict(X_test), abs(best_model.best_score_), models_comparison_df
 
 
 def create_clusters(df, cluster_cols, n_clusters=None):
