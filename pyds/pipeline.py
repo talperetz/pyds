@@ -4,11 +4,28 @@
 :TL;DR: this module responsible for executing the data science pipelilne and holding it's results
 """
 import logging
-import time
 
 from pyds import ingestion, exploration, transformations, cleaning, features_engineering, ml, evaluation
 
 logger = logging.getLogger(__name__)
+
+
+class ExplorationResults:
+    """
+    this class holds the results for the exploration stage
+    """
+    num_description, cat_description, hist, box_plot, contingency_table, scatter_plot, correlations = (None for _ in
+                                                                                                       range(7))
+
+    def save_exploration_results(self, num_description, cat_description, hist, box_plot, scatter_plot,
+                                 contingency_table, correlations):
+        self.exploration_results.num_description = num_description
+        self.exploration_results.cat_description = cat_description
+        self.exploration_results.hist = hist
+        self.exploration_results.box_plot = box_plot
+        self.exploration_results.scatter_plot = scatter_plot
+        self.exploration_results.contingency_table = contingency_table
+        self.exploration_results.correlations = correlations
 
 
 class PipelineResults:
@@ -16,74 +33,48 @@ class PipelineResults:
     this class holds the results for each stage of the data science pipeline
     """
 
-    class Ingestion:
-        initial_X_train, initial_X_test, initial_y_train, initial_y_test, numerical_cols, categorical_cols, id_cols = (
-            None for _ in range(7))
-
-    class Exploration:
-        num_description, cat_description, hist, box_plot, contingency_table, correlations = (
-            None for _ in range(6))
-
-    class Cleaning:
-        na_rows, imputation, outliers = (None for _ in range(3))
-
-    class Transformations:
-        num_transformations, cat_transformations, numerical_cols, categorical_cols, col_to_width_edges, col_to_depth_edges = (
-            None for _ in range(6))
-
-    class Features:
-        created_features, dropped_features = (None for _ in range(2))
-
-    class ML:
-        best_model, predictions_df, scores, clusterer_to_results, scatter_plots = (None for _ in range(5))
-
-    ingestion_results, exploration_results, cleaning_results, transformations_results, features_results, ml_results = \
-        Ingestion(), Exploration(), Cleaning(), Transformations(), Features(), ML()
+    initial_X_train, initial_X_test, initial_y_train, initial_y_test, numerical_cols, categorical_cols, id_cols = (
+        None for _ in range(7))
+    na_rows, imputation, outliers = (None for _ in range(3))
+    num_transformations, cat_transformations, numerical_cols, categorical_cols, col_to_width_edges, col_to_depth_edges = \
+        (None for _ in range(6))
+    created_features, dropped_features = (None for _ in range(2))
+    best_model, predictions_df, scores, clusterer_to_results, scatter_plots, evaluation = (None for _ in range(6))
 
     def save_ingestion_results(self, X_train, X_test, y_train, y_test, numerical_cols, categorical_cols, id_cols):
-        self.ingestion_results.initial_X_train = X_train
-        self.ingestion_results.initial_X_test = X_test
-        self.ingestion_results.initial_y_train = y_train
-        self.ingestion_results.initial_y_test = y_test
-        self.ingestion_results.numerical_cols = numerical_cols
-        self.ingestion_results.categorical_cols = categorical_cols
-        self.ingestion_results.id_cols = id_cols
-
-    def save_exploration_results(self, num_description, cat_description, hist, box_plot, contingency_table,
-                                 correlations):
-        self.exploration_results.num_description = num_description
-        self.exploration_results.cat_description = cat_description
-        self.exploration_results.hist = hist
-        self.exploration_results.box_plot = box_plot
-        self.exploration_results.contingency_table = contingency_table
-        self.exploration_results.correlations = correlations
+        self.initial_X_train = X_train
+        self.initial_X_test = X_test
+        self.initial_y_train = y_train
+        self.initial_y_test = y_test
+        self.numerical_cols = numerical_cols
+        self.categorical_cols = categorical_cols
+        self.id_cols = id_cols
 
     def save_cleaning_results(self, na_rows, imputation, outliers):
-        self.cleaning_results.na_rows = na_rows
-        self.cleaning_results.imputation = imputation
-        self.cleaning_results.outliers = outliers
+        self.na_rows = na_rows
+        self.imputation = imputation
+        self.outliers = outliers
 
     def save_transformations(self, train_transformations):
-        self.transformations_results.num_transformations = train_transformations.col_to_scaler
-        self.transformations_results.cat_transformations = train_transformations.col_to_encoder
-        self.transformations_results.col_to_width_edges = train_transformations.col_to_width_edges
-        self.transformations_results.col_to_depth_edges = train_transformations.col_to_depth_edges
+        self.num_transformations = train_transformations.col_to_scaler
+        self.cat_transformations = train_transformations.col_to_encoder
+        self.col_to_width_edges = train_transformations.col_to_width_edges
+        self.col_to_depth_edges = train_transformations.col_to_depth_edges
 
     def save_features(self, created_features, dropped_features):
-        self.features_results.created_features = created_features
-        self.features_results.dropped_features = dropped_features
+        self.created_features = created_features
+        self.dropped_features = dropped_features
 
-    def save_models(self, best_model, predictions_df, scores, clusterer_to_results, scatter_plots):
-        self.ml_results.best_model = best_model
-        self.ml_results.predictions_df = predictions_df
-        self.ml_results.scores = scores
-        self.ml_results.clusterer_to_results = clusterer_to_results
-        self.ml_results.scatter_plots = scatter_plots
+    def save_models_results(self, best_model, predictions_df, scores, clusterer_to_results, scatter_plots, evaluation):
+        self.best_model = best_model
+        self.predictions_df = predictions_df
+        self.scores = scores
+        self.clusterer_to_results = clusterer_to_results
+        self.scatter_plots = scatter_plots
+        self.evaluation = evaluation
 
 
 def explore(train_paths):
-    pipeline_results = PipelineResults()
-
     # load data, validate, infer and adjust columns types
     train_df = ingestion.read(train_paths)
     logger.info('loaded train data from %s successfully' % train_paths)
@@ -98,20 +89,20 @@ def explore(train_paths):
                                                                       y_test)
     logger.info('columns types inferred: \nid - %s \n categorical - %s \n numerical - %s' % (
         id_columns, categorical_columns, numerical_columns))
-    pipeline_results.save_ingestion_results(X_train, X_test, y_train, y_test, numerical_columns, categorical_columns,
-                                            id_columns)
 
     # exploration
     num_description, cat_description = exploration.describe(X=X_train, y=y_train)
-    pipeline_results.save_exploration_results(num_description, cat_description,
-                                              exploration.dist_plot(X=X_train, y=y_train),
-                                              exploration.box_plot(X=X_train, y=y_train),
-                                              exploration.contingency_table(X=X_train, y=y_train),
-                                              exploration.correlations(X=X_train, y=y_train))
     logger.info(
         'exploration results are ready: \n numerical columns description - \n%s \n categorical columns description -\n%s'
         % (num_description, cat_description))
-    return pipeline_results.exploration_results
+    results = ExplorationResults()
+    results.save_exploration_results(num_description, cat_description,
+                                     exploration.dist_plot(X=X_train, y=y_train),
+                                     exploration.box_plot(X=X_train, y=y_train),
+                                     exploration.scatter_plot(X=X_train, y=y_train),
+                                     exploration.contingency_table(X=X_train, y=y_train),
+                                     exploration.correlations(X=X_train, y=y_train))
+    return results
 
 
 def exec_offline_pipeline(train_paths, test_paths=None, target_column=None, columns_to_clusterize=None,
@@ -134,8 +125,8 @@ def exec_offline_pipeline(train_paths, test_paths=None, target_column=None, colu
     train_df = ingestion.read(train_paths)
     logger.info('loaded train data from %s successfully' % train_paths)
     ingestion.validate_dataset(train_df)
-    X_train, X_test, y_train, y_test, is_supervised = ingestion.get_train_test_splits(train_df, test_paths,
-                                                                                      target_column)
+    X_train, X_test, y_train, y_test, is_supervised = ingestion.get_train_test_splits(train_df, target_column,
+                                                                                      test_paths)
     logger.info(
         'split data to train and test sets: \nX_train shape - %s \nX_test shape - %s' % (
             X_train.shape, X_test.shape))
@@ -190,30 +181,39 @@ def exec_offline_pipeline(train_paths, test_paths=None, target_column=None, colu
     ml_ready_X_train = ml_ready_X_train.loc[:,
                        list(set(ml_ready_X_train.columns).intersection(ml_ready_X_test.columns.tolist()))]
     logger.info('test set transformed successfully\n applying ML models')
-    ml_start_time = time.time()
+
     # ML
-    best_model, predictions_df, score, clusterer_to_results = (None for _ in range(4))
+    best_model, predictions_df, score, clustering_algorithms, model_evaluation = (None for _ in range(5))
     # supervised problem
     if is_supervised:
         # classification problem
-        if target_column in pipeline_results.ingestion_results.categorical_cols:
-            best_model, predictions_df, score = ml.classify(ml_ready_X_train, ml_ready_X_test, ml_ready_y_train)
-            clf_evaluation = evaluation.evaluate_classification(best_model)
+        if target_column in pipeline_results.categorical_cols:
+            best_model, predictions, score, models_comparison_df = ml.classify(ml_ready_X_train, ml_ready_X_test,
+                                                                               ml_ready_y_train)
+            model_evaluation = evaluation.evaluate_classification(y_test, predictions)
             logger.info('finished classification')
         # regression problem
         else:
-            best_model, predictions_df, score = ml.regress(ml_ready_X_train, ml_ready_X_test, ml_ready_y_train)
+            best_model, predictions, score, models_comparison_df = ml.regress(ml_ready_X_train, ml_ready_X_test,
+                                                                              ml_ready_y_train)
+            model_evaluation = evaluation.evaluate_regression(y_test, predictions)
             logger.info('finished regression')
+        logger.info("best model : \n %s" % best_model)
+        logger.info("predictions : \n %s" % predictions)
+        logger.info("best score : \n %s" % score)
+        logger.info("models comparison : \n %s" % models_comparison_df)
     # unsupervised problem
     else:
-        clusterer_to_results = ml.create_clusters(ml_ready_X_train, columns_to_clusterize, n_clusters)
+        clustering_algorithms = ml.create_clusters(ml_ready_X_train, columns_to_clusterize, n_clusters)
         logger.info('finished clustering')
-    scatter_plots = exploration.scatter_plot(ml_ready_X_train, ml_ready_y_train)
+    reducer_to_reduced_df = ml.reduce_dimensions(ml_ready_X_train)
+    scatter_plots = []
+    for reducer, reduced_df in reducer_to_reduced_df.items():
+        scatter_plots = exploration.scatter_plot(reduced_df, y=ml_ready_y_train,
+                                                 figure_title='post processing after %s' % reducer)
     logger.info('finished scatter plotting')
-    pipeline_results.save_models(best_model, predictions_df, score, clusterer_to_results, scatter_plots)
-    logger.info('ml process is finished\n after %s seconds\n best model: \n%s\n score:\n%s\n\n' % (
-        (time.time() - ml_start_time), best_model, score))
-
+    pipeline_results.save_models_results(best_model, predictions_df, score, clustering_algorithms, scatter_plots,
+                                         model_evaluation)
     return pipeline_results
 
 

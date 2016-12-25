@@ -59,7 +59,6 @@ class PipelineTestCase(unittest.TestCase):
                                                                   target_column='target')
                 try:
                     self.assert_ingestion(pipeline_results)
-                    self.assert_exploration(pipeline_results)
                     self.assert_cleaning(pipeline_results)
                     self.assert_features(pipeline_results)
                     self.assert_ml(pipeline_results)
@@ -67,33 +66,25 @@ class PipelineTestCase(unittest.TestCase):
                     self.logger.error(e)
 
     def assert_ingestion(self, pipeline_results):
-        self.assertIsNotNone(pipeline_results.ingestion_results.initial_X_train)
-        self.assertIsNotNone(pipeline_results.ingestion_results.initial_X_test)
-        self.assertIsNotNone(pipeline_results.ingestion_results.initial_y_train)
-        self.assertIsNotNone(pipeline_results.ingestion_results.initial_y_test)
-        self.assertTrue((pipeline_results.ingestion_results.numerical_cols is not None) or (
-            pipeline_results.ingestion_results.categorical_cols is not None) or (
-                            pipeline_results.ingestion_results.id_cols is not None))
-
-    def assert_exploration(self, pipeline_results):
-        self.assertTrue((pipeline_results.exploration_results.num_description is not None) or (
-            pipeline_results.exploration_results.cat_description is not None))
-        self.assertIsNotNone(pipeline_results.exploration_results.hist)
-        self.assertIsNotNone(pipeline_results.exploration_results.box_plot)
-        self.assertIsNotNone(pipeline_results.exploration_results.contingency_table)
-        self.assertIsNotNone(pipeline_results.exploration_results.correlations)
+        self.assertIsNotNone(pipeline_results.initial_X_train)
+        self.assertIsNotNone(pipeline_results.initial_X_test)
+        self.assertIsNotNone(pipeline_results.initial_y_train)
+        self.assertIsNotNone(pipeline_results.initial_y_test)
+        self.assertTrue((pipeline_results.numerical_cols is not None) or (
+            pipeline_results.categorical_cols is not None) or (
+                            pipeline_results.id_cols is not None))
 
     def assert_cleaning(self, pipeline_results):
         pass
 
     def assert_features(self, pipeline_results):
-        self.assertIsNotNone(pipeline_results.features_results.created_features)
+        self.assertIsNotNone(pipeline_results.created_features)
 
     def assert_ml(self, pipeline_results):
         self.assertTrue(
-            (pipeline_results.ml_results.best_model is not None) or (
-                pipeline_results.ml_results.clusterer_to_results is not None))
-        self.assertIsNotNone(pipeline_results.ml_results.scatter_plots)
+            (pipeline_results.best_model is not None) or (
+                pipeline_results.clusterer_to_results is not None))
+        self.assertIsNotNone(pipeline_results.scatter_plots)
 
     def assert_ui(self, pipeline_results):
         pass
