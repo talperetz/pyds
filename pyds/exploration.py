@@ -66,7 +66,6 @@ def dist_plot(X, y=None, **kwargs):
         categorical_figures.append(plt.figure(i))
         df[col].value_counts().dropna().plot(kind='bar', **kwargs)
         plt.suptitle(str(col) + ' Distribution', fontsize=20)
-    plt.show()
     return numerical_figures, categorical_figures
 
 
@@ -100,15 +99,18 @@ def box_plot(X, y=None):
     return numerical_figure, categorical_figure
 
 
-def scatter_plot(X, y=None, **kwargs):
+def scatter_plot(X, y=None, figure_title='Raw Features Scatter Matrix', **kwargs):
     """
     given a pandas DataFrame without categorical data plots scatterplot of the data for each
     reducer in ml.reduce_dimensions()
+    :param figure_title: str, title for the pyplot figure
     :param y: [pandas Series] target column
     :param X: [pandas DataFrame] predictor columns without categorical data
     :param kwargs: passed to pandas.Series.plot
     """
     assert (isinstance(X, pd.DataFrame)) and (not X.empty), 'X should be a valid pandas DataFrame'
+    if X.shape[1] > 5:
+        return None
     df = X.copy()
     if y is not None:
         assert (isinstance(y, pd.Series)) and (not y.empty), 'y should be a valid pandas Series'
@@ -116,7 +118,7 @@ def scatter_plot(X, y=None, **kwargs):
         scatter_mat = sns.pairplot(df, hue=y.name, diag_kind="kde", diag_kws=dict(shade=True), **kwargs)
     else:
         scatter_mat = sns.pairplot(df, diag_kind="kde", diag_kws=dict(shade=True), **kwargs)
-    plt.suptitle('Raw Features Scatter Matrix', fontsize=20)
+    plt.suptitle(figure_title, fontsize=20)
     return scatter_mat
 
 

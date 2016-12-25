@@ -10,6 +10,7 @@ import os
 import unittest
 
 import matplotlib
+import numpy as np
 import pandas as pd
 import seaborn as sns
 from sklearn.datasets import load_diabetes
@@ -54,7 +55,7 @@ class ExplorationTestCase(unittest.TestCase):
         self.cat_and_num_y = pd.Series(load_diabetes()['target'])
         self.num_X = data_generators.generate_random_data(100, 15)
         self.num_y = data_generators.generate_random_data(100, 1)
-        self.cat_X = cat_and_num_df.select_dtypes(exclude=['int', 'float'])
+        self.cat_X = cat_and_num_df.select_dtypes(exclude=[np.number])
         self.cat_y = self.cat_and_num_y
 
     def test_describe(self):
