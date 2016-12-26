@@ -48,7 +48,7 @@ class IngestionTestCase(unittest.TestCase):
             self.assertRaises(ValueError, ingestion._get_file_extension(path))
 
     def test_read(self):
-        root_dir = os.path.abspath("/resources/datasets/")
+        root_dir = os.path.abspath("/resources/iris different extensions/")
         for subdir, dirs, files in os.walk(root_dir):
             for file in files:
                 if (file is not None) and (not file.endswith('.py')):
