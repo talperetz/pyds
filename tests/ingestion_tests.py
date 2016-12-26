@@ -40,12 +40,12 @@ class IngestionTestCase(unittest.TestCase):
 
     def test_get_extensions(self):
         good_examples = {'C:/dev/talos.%s' % extension: extension for extension in
-                         constants.FILE_EXTENSION_TO_READ_ATTRIBUTE.values()}
+                         constants.FILE_EXTENSION_TO_READ_ATTRIBUTE.keys()}
         for path, extension in good_examples.items():
             self.assertEquals(ingestion._get_file_extension(path), extension)
         error_examples = ['C:/dev/talos', None, 'C:/dev/talos.wrong']
         for path in error_examples:
-            self.assertRaises(ValueError, ingestion._get_file_extension(path))
+            self.assertRaises(ValueError, ingestion._get_file_extension, path)
 
     def test_read(self):
         root_dir = os.path.abspath("/resources/iris different extensions/")
