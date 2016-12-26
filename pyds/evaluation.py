@@ -46,7 +46,7 @@ def evaluate_classification(y_true, y_pred, target_values, y_scores=None):
                                            ''.format(class_name, roc_auc))
         roc_fig = plt.plot([0, 1], [0, 1], color='navy', lw=1, linestyle='--', label='Random Model')
         plt.xlim([0.0, 1.0])
-        plt.ylim([0.0, 1.05])
+        plt.ylim([0.0, 1.0])
         plt.xlabel('False Positive Rate')
         plt.ylabel('True Positive Rate')
         plt.title('ROC', fontsize=20)
