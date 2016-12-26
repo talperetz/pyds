@@ -43,7 +43,7 @@ class PipelineTestCase(unittest.TestCase):
         and asserts the whole pipeline to check basic functionality
         """
         from pyds import pipeline
-        root_dir = os.path.abspath("../resources/datasets/")
+        root_dir = os.path.abspath("/resources/datasets/")
         for subdir, dirs, files in os.walk(root_dir):
             train_path, test_path = None, None
             for file in files:

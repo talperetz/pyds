@@ -14,16 +14,17 @@ class ExplorationResults:
     """
     this class holds the results for the exploration stage
     """
-    num_description, cat_description, hist, box_plot, contingency_table, scatter_plot, correlations = (None for _ in
-                                                                                                       range(7))
+    num_description, cat_description, hist, box_plot, contingency_table, scatter_plot, reduced_scatter_plots, correlations = (
+        None for _ in range(8))
 
     def save_exploration_results(self, num_description, cat_description, hist, box_plot, scatter_plot,
-                                 contingency_table, correlations):
+                                 reduced_scatter_plots, contingency_table, correlations):
         self.exploration_results.num_description = num_description
         self.exploration_results.cat_description = cat_description
         self.exploration_results.hist = hist
         self.exploration_results.box_plot = box_plot
         self.exploration_results.scatter_plot = scatter_plot
+        self.reduced_scatter_plots = reduced_scatter_plots
         self.exploration_results.contingency_table = contingency_table
         self.exploration_results.correlations = correlations
 
@@ -95,11 +96,17 @@ def explore(train_paths):
     logger.info(
         'exploration results are ready: \n numerical columns description - \n%s \n categorical columns description -\n%s'
         % (num_description, cat_description))
+    reducer_to_reduced_df = ml.reduce_dimensions(X_train)
+    reduced_scatter_plots = []
+    for reducer, reduced_df in reducer_to_reduced_df.items():
+        reduced_scatter_plots = exploration.scatter_plot(reduced_df, y=y_train,
+                                                         figure_title='post processing after %s' % reducer)
     results = ExplorationResults()
     results.save_exploration_results(num_description, cat_description,
                                      exploration.dist_plot(X=X_train, y=y_train),
                                      exploration.box_plot(X=X_train, y=y_train),
                                      exploration.scatter_plot(X=X_train, y=y_train),
+                                     reduced_scatter_plots,
                                      exploration.contingency_table(X=X_train, y=y_train),
                                      exploration.correlations(X=X_train, y=y_train))
     return results
