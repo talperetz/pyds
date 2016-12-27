@@ -13,13 +13,15 @@ TEST_SPLIT_SIZE = 0.3
 
 # cleaning
 ID_COLUMN_DIST_RATIO_THRESHOLD = 1.0  # threshold for setting a columns as id column using (unique values / all values)
+CATEGORICAL_COLUMN_DIST_RATIO_THRESHOLD = 0.1
+# threshold for setting a column as categorical using (unique values / all values)
+CATEGORICAL_COUNT_THRESHOLD = 5  # threshold use to differ categorical variables that are of numerical type
 MISSING_VALUES_REPRESENTATION = 'NaN'  # indicates which types are considered as missing values in pandas DataFrame
 DROP_ABOVE_NULL_THRESHOLD = 0.6  # percents [0.0 - 1.0]
 ISOLATION_FOREST_N_ESTIMATORS = 100  # [int > 0] isolation forest is used for removing outliers in data
 KNN_N_NEIGHBORS = 4  # [int > 0] knn is used to impute missing data
 
 # exploration
-CATEGORICAL_THRESHOLD = 10  # threshold use to differ categorical variables that are of numerical type
 FIGURE_SIZE = (8, 8)  # matplotlib fig_size
 
 # features engineering

@@ -113,16 +113,22 @@ def infer_columns_statistical_types(X, y=None, col_to_type=None):
             elif col_type == 'id':
                 id_cols.append(col_name)
             else:
-                raise TypeError('supported types are numerical / categorical')
+                raise TypeError("supported types are 'numerical', 'categorical', 'id'")
                 df.drop(col_name, axis=1, inplace=True)
-    unique_df = df.apply(pd.Series.nunique)
-    dist_ratios = unique_df / df.apply(pd.Series.count)
-    id_cols += dist_ratios.where(dist_ratios == constants.ID_COLUMN_DIST_RATIO_THRESHOLD).dropna().index.tolist()
-    suspected_numerical_cols = set(df.select_dtypes(include=constants.NUMERIC_TYPES).columns).difference(id_cols)
-    numerical_cols += list(
-        set(unique_df.where(unique_df > constants.CATEGORICAL_THRESHOLD).dropna().index.tolist()).intersection(
-            suspected_numerical_cols))
-    categorical_cols += list(set(df.columns.difference(numerical_cols).drop(id_cols).tolist()))
+    else:
+        # infer types automatically
+        unique_df = df.apply(pd.Series.nunique)
+        dist_ratios = unique_df / df.apply(pd.Series.count)
+
+        suspected_numerical_cols = set(df.select_dtypes(include=[np.number]).columns)
+        suspected_categorical_cols = set(df.columns).difference(suspected_numerical_cols)
+        suspected_id_cols = dist_ratios.where(dist_ratios == constants.ID_COLUMN_DIST_RATIO_THRESHOLD).dropna().index
+        id_cols = list(set(suspected_id_cols).intersection(suspected_categorical_cols))
+        numerical_cols_that_arent_categorical = set(
+            unique_df.where(unique_df > constants.CATEGORICAL_COUNT_THRESHOLD).dropna().index).intersection(
+            dist_ratios.where(dist_ratios > constants.CATEGORICAL_COLUMN_DIST_RATIO_THRESHOLD).dropna().index)
+        numerical_cols = list(suspected_numerical_cols.intersection(numerical_cols_that_arent_categorical))
+        categorical_cols = list(set(df.columns).difference(numerical_cols).difference(id_cols))
     return numerical_cols, categorical_cols, id_cols
 
 
