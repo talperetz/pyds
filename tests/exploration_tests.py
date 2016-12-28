@@ -100,8 +100,9 @@ class ExplorationTestCase(unittest.TestCase):
 
     def test_scatter_plot(self):
         diabetes_figure = exploration.scatter_plot(self.cat_and_num_X, self.cat_and_num_y)
-        self.assertIsInstance(diabetes_figure, sns.axisgrid.PairGrid)
-        rand_df_figure = exploration.scatter_plot(self.num_X, self.num_y)
+        self.assertIsNone(diabetes_figure)
+        rand_df_figure = exploration.scatter_plot(data_generators.generate_random_data(100, 5),
+                                                  data_generators.generate_random_data(100, 1))
         self.assertIsInstance(rand_df_figure, sns.axisgrid.PairGrid)
         cat_df_figures = exploration.scatter_plot(self.cat_X, self.cat_y)
         self.assertIsInstance(cat_df_figures, sns.axisgrid.PairGrid)
@@ -131,6 +132,7 @@ class ExplorationTestCase(unittest.TestCase):
         cat_df_corr_matrix, cat_df_corr_figure = exploration.correlations(self.cat_X)
         self.assertIsNone(cat_df_corr_matrix)
         self.assertIsNone(cat_df_corr_figure)
+
 
 if __name__ == '__main__':
     unittest.main()
