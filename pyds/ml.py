@@ -6,11 +6,11 @@
 """
 
 import logging
-import math
 import random
 from time import time
 
 import hdbscan
+import math
 import pandas as pd
 from orangecontrib.associate.fpgrowth import association_rules, frequent_itemsets, rules_stats
 from scipy.stats import randint as sp_randint
@@ -188,14 +188,14 @@ def regress(X_train, X_test, y_train, scoring='neg_mean_squared_error'):
     gbr = MLModel('GradientBoostingRegressor', GradientBoostingRegressor(n_estimators=100), {
         'loss': ['ls', 'lad', 'huber', 'quantile'],
         'max_depth': sp_randint(1, 10),
-        'min_samples_split': sp_randint(1, 10),
-        'min_samples_leaf': sp_randint(1, 10),
+        'min_samples_split': sp_randint(2, 10),
+        'min_samples_leaf': sp_randint(2, 10),
         'max_features': ['auto', 'sqrt', 'log2']
     })
     rf_regressor = MLModel('RandomForestRegressor', RandomForestRegressor(n_estimators=100), {
         'max_depth': sp_randint(2, 20),
-        'min_samples_split': sp_randint(1, 10),
-        'min_samples_leaf': sp_randint(1, 10),
+        'min_samples_split': sp_randint(2, 10),
+        'min_samples_leaf': sp_randint(2, 10),
         'max_features': sp_randint(int((math.sqrt(num_of_features) / 2.0) + 1), num_of_features),
         'criterion': ["mse", "mae"]
     })
