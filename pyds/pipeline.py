@@ -5,6 +5,8 @@
 """
 import logging
 
+from pandas.types.dtypes import CategoricalDtypeType
+
 from pyds import ingestion, exploration, transformations, cleaning, features_engineering, ml, evaluation
 
 logger = logging.getLogger(__name__)
@@ -194,7 +196,7 @@ def exec_offline_pipeline(train_paths, test_paths=None, target_column=None, colu
     # supervised problem
     if is_supervised:
         # classification problem
-        if target_column in pipeline_results.categorical_cols:
+        if ml_ready_y_train.dtype.type == CategoricalDtypeType:
             best_model, predictions, score, models_comparison_df = ml.classify(ml_ready_X_train, ml_ready_X_test,
                                                                                ml_ready_y_train)
             model_evaluation = evaluation.evaluate_classification(y_test, predictions)
