@@ -6,7 +6,7 @@
 
 import numpy as np
 import pandas as pd
-from sklearn.linear_model import RandomizedLasso
+from sklearn.linear_model import RandomizedLasso, RandomizedLogisticRegression
 from sklearn.preprocessing import FunctionTransformer, MinMaxScaler
 
 from pyds import constants
@@ -76,9 +76,9 @@ def select_features(X, y):
     names = X.columns.tolist()
 
     # ranking
-    rlasso = RandomizedLasso(alpha=0.04)
-    rlasso.fit(X, y)
-    col_name_to_rank = _get_col_name_to_rank(np.abs(rlasso.scores_), names)
+    rs_model = RandomizedLogisticRegression() if y.dtype.type == pd.types.dtypes.CategoricalDtypeType else RandomizedLasso()
+    rs_model.fit(X, y)
+    col_name_to_rank = _get_col_name_to_rank(np.abs(rs_model.scores_), names)
 
     # dropping irrelevant features
     columns_to_drop = [name for name, rank in col_name_to_rank.items() if rank == 0]
