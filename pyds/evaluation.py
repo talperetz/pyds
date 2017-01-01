@@ -19,16 +19,16 @@ from pyds import constants
 sns.set_style("whitegrid")
 
 
-def evaluate_classification(y_true, y_pred, target_values, y_scores=None):
+def evaluate_classification(y_true, y_pred, y_scores=None):
     """
     given array of correct target values, array of estimated targets and classes names
     returns confusion matrix, classification report and roc curve
     :param y_true: array of ground truth (correct) target values
     :param y_pred: array of estimated targets as returned by a classifier
-    :param target_values: Optional display names matching the labels (same order)
     :return: classification report, confusion matrix figure, roc figure
     """
     roc_fig = None
+    target_values = y_true.unique()
     target_names = [str(val) for val in target_values]
     cm = confusion_matrix(y_true, y_pred)
     cr = classification_report(y_true, y_pred, target_names=target_names)
