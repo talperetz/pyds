@@ -47,15 +47,17 @@ def _encode_categorical_columns(encode_df, expand_fit_df=None, col_to_encoder=No
     :param col_to_encoder: dictionary mapping each column to a transformer used when you want prefitted transformers
     :return: encoded dataframe, dictionary mapping column to encoder
     """
+    # if there's another df passed we'll take it's labels into consideration
+    #  so label encoder won't get tackled with new observations
     if expand_fit_df is not None:
         assert set(encode_df.columns).issubset(expand_fit_df.columns)
-        expand_fit_df = pd.concat([encode_df, expand_fit_df], ignore_index=True)
-    else:
-        expand_fit_df = encode_df
+        encode_df = encode_df.apply(
+            lambda col: col.cat.add_categories(
+                set(expand_fit_df[col.name].cat.categories).difference(col.cat.categories)))
     if not col_to_encoder:
         col_to_encoder = defaultdict(LabelEncoder)
-        expand_fit_df.apply(
-            lambda col: col_to_encoder[col.name].fit(col.cat.as_ordered().sort_values()))
+        encode_df.apply(
+            lambda col: col_to_encoder[col.name].fit(col.cat.as_ordered().cat.categories))
     label_encoded_df = encode_df.apply(
         lambda col: col_to_encoder[col.name].transform(col.cat.as_ordered().sort_values().values))
 
