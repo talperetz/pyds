@@ -4,7 +4,7 @@
 pyds is a python library for simple data science
 it implements the whole data science pipeline:
 
-![data science pipeline]({{site.baseurl}}//data%20science%20pipeline.png)
+![data science pipeline](https://github.com/talperetz/pyds/blob/master/resources/pictures/ds.jpg)
 
 and can solve problems of the following types:
 
@@ -16,6 +16,7 @@ and can solve problems of the following types:
 - dimensionality reduction
 
 ### TL;DR
+easy data science
 
 ### Installation
 > pip install PyDS
